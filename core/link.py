@@ -4,7 +4,7 @@ Inter-bridge links.
 import core.types
 import core.bridge
 from core.types import Proto, Message, OutPort, Config, Channel, ServiceMessage, JoinMessage, PartMessage, Metadata, AnyMessage
-from typing import Tuple
+from typing import Tuple, Optional
 import struct
 import pickle
 import logging
@@ -19,6 +19,8 @@ class Link:
         self.bridge = bridge
         self.instance_cfg = instance_cfg
         self.name = instance_cfg['name']
+        self.reader: Optional[StreamReader] = None
+        self.writer: Optional[StreamWriter] = None
 
         remote = instance_cfg['remote']
         self.remote_host, self.remote_port = remote.split(':')
@@ -93,6 +95,9 @@ class Link:
             asyncio.create_task(self.start(self.bridge, self.instance_cfg))
 
     async def send_message(self, from_instance: str, message: AnyMessage) -> None:
+        if not self.writer:
+            return
+
         logger.info(f"Sending message {message}")
         data = pickle.dumps((from_instance, message))
         size = len(data)
