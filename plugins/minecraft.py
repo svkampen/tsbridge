@@ -58,8 +58,13 @@ class MinecraftProto(Proto):
     @match(f"({USERNAME}) (joined|left) the game")
     async def join_part(self, line, groups):
         logger.info(f"{groups[1].title()}: {groups[0]}")
+        if groups[1] == "joined":
+            msg = JoinMessage(groups[0], CHANNEL_NAME)
+        else:
+            msg = PartMessage(groups[0], CHANNEL_NAME)
+        await self.out_port.put_message(msg)
 
-    @match(f"<({USERNAME})> (.+)")
+    @match(f"[\\[<]({USERNAME})[>\\]] (.+)")
     async def message(self, line, groups):
         user, message = groups
         logger.info(f"Message from {user}: {message}")
@@ -85,7 +90,7 @@ class MinecraftProto(Proto):
                 url = await self.img_host.put(attachment.get())
                 fmt.append({'text': '[IMG]', 'color': 'gold', 'clickEvent': {'action': 'open_url', 'value': url}})
 
-        fmt.append({'text': message.text, 'color': 'white'})
+        fmt.append({'text': f"{message.user}: {message.text}", 'color': 'white'})
         self.pty_writer.write("tellraw @a " + json.dumps(fmt) + "\n")
         self.pty_writer.flush()
 
