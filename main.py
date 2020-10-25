@@ -18,13 +18,14 @@ import core.logging
 import toml
 import os
 import logging
+from typing import Dict, Any
 
-def main(args):
+def main(args: Dict) -> None:
     if not os.path.exists(args['--config']):
         return print(f'Error: configuration file {args["--config"]!r} does not exist.')
 
     with open(args['--config'], 'r') as f:
-        config = toml.load(f)
+        config = dict(toml.load(f))
 
     if (args['--debug']):
         core.logging.init(level=logging.DEBUG)
