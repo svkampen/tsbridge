@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import IO, Sequence, List, Mapping, Any, Union, Iterable, Tuple
 from io import BytesIO
 
-Channel = Any
+Channel = Union[str, int]
 User = str
 Config = Mapping[str, Any]
 
