@@ -66,7 +66,7 @@ class TelegramProto(Proto):
 
     async def send_message(self, to_channel: Channel, message: Message) -> None:
         logger.info(f'Sending message to channel {to_channel}: {message}')
-        formatted = f'{message.user}: {message.text}'
+        formatted = f'{message.user}: {message.text}'.strip()
         to_channel = int(to_channel)
         await self.client.send_message(to_channel, message=formatted)
 

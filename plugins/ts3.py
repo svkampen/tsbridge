@@ -30,9 +30,9 @@ class TS3Proto(Proto):
             self.clid_users[int(client['clid'])] = client['client_nickname']
         logger.info(f"Current client list: {self.clid_users}")
         await self.client.request('servernotifyregister event=textchannel')
-        asyncio.create_task(self.notify_waiter(), name='notify waiter (protocol)')
         for chid in instance_cfg['notify_channels']:
             await self.client.request(f'servernotifyregister event=channel id={chid}')
+        asyncio.create_task(self.notify_waiter())
 
     async def notify_waiter(self) -> None:
         while True:
@@ -88,9 +88,9 @@ class TS3Proto(Proto):
         for attachment in message.attachments:
             if isinstance(attachment, Photo):
                 url = await self.img_host.put(attachment.get())
-                txt += f" [Contains photo: {url}]"
+                txt += f" [ Contains photo: {url} ]"
 
-        txt = txt.replace(' ', r'\s').strip()
+        txt = ServerQueryClient.escape(txt).strip()
 
         try:
             await self.client.request(f'clientupdate client_nickname=Bridge-{message.user}')

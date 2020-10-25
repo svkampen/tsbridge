@@ -20,7 +20,7 @@ def kv_parse(string: str) -> Dict[str, str]:
             val = kv.split('=', 1)[1]
         except IndexError:
             val = ''
-        data[kv.split('=')[0]] = val.replace(r'\s', ' ')
+        data[kv.split('=')[0]] = ServerQueryClient.unescape(val)
     return data
 
 class SQResult:
@@ -103,7 +103,7 @@ class ServerQueryClient:
         assert errstr.startswith('error')
 
         data = kv_parse(errstr)
-        return data['msg'].replace(r'\s', ' '), int(data['id'])
+        return ServerQueryClient.unescape(data['msg']), int(data['id'])
 
     async def process_notification(self, line: str) -> None:
         assert line.startswith('notify')
@@ -116,43 +116,40 @@ class ServerQueryClient:
 
     async def handle_req_or_notify(self, req_aw: Optional[Task] = None, notify_aw: Optional[Task] = None) -> Tuple[Optional[Task], Optional[Task]]:
         if req_aw is None:
-            logger.info('Starting new request queue task.')
-            req_aw = asyncio.create_task(self.request_queue.get(), name='request task')
+            logger.debug('Starting new request queue task.')
+            req_aw = asyncio.create_task(self.request_queue.get())
         if notify_aw is None:
-            logger.info('Starting new notify (network readuntil) task.')
-            notify_aw = asyncio.create_task(self.readline(), name='notify task')
+            logger.debug('Starting new notify (network readuntil) task.')
+            notify_aw = asyncio.create_task(self.readline())
 
         done, pending = await asyncio.wait({req_aw, notify_aw},
                                            return_when=FIRST_COMPLETED)
 
         if notify_aw in done:
             line = await notify_aw
-            logger.info(f'Received notification line: {line}')
             await self.process_notification(line)
-            logger.info(f'Processed notification line. notify_aw done, returning old req_aw.')
             return (req_aw, None)
 
-        request, future = req_aw.result()
+        request, future = await req_aw
 
         self.writer.write((request + '\n').encode('utf-8'))
         await self.writer.drain()
 
-        logger.info('Starting request reading...')
-
         req_data = ''
         line = await notify_aw # the 'notify' task will contain the first response str
-        logger.info(f'First line read: {line!r}')
 
         if not 'error' in line:
             req_data += line
-            while not (line := (await self.readline())).startswith('error'):
+            line = (await self.readline())
+            while not line.startswith('error'):
                 if line.startswith('notify'):
                     await self.process_notification(line)
 
                 req_data += line + '\n'
+                line = (await self.readline())
 
         error_data = kv_parse(line)
-        logger.info(f'Req: {request}. Read response: {req_data.strip()}. Error line: {line.strip()}')
+        logger.debug(f'Req: {request}. Read response: {req_data.strip()}. Error line: {line.strip()}')
 
         if error_data['id'] != '0':
             future.set_exception(SQError(error_data['msg'], int(error_data['id'])))
@@ -160,6 +157,27 @@ class ServerQueryClient:
             future.set_result(req_data.strip())
 
         return (None, None)
+
+    @staticmethod
+    def escape(string: str):
+        """ Escape a string according to the replacement rules in the SQ manual. """
+        string = string.replace('\\', r'\\').replace('/', r'\/').replace(' ', r'\s').replace('|', r'\p')
+
+        for c in "abfnrtv":
+            # replace, e.g., \n (newline) with \\n (backslash-n)
+            string = string.replace(eval(rf'"\{c}"'), rf"\{c}")
+
+        return string
+
+    @staticmethod
+    def unescape(string: str):
+        """ Unescape a string """
+        string = string.replace(r'\\', '\\').replace(r'\/', '/').replace(r'\s', ' ').replace(r'\p', '|')
+
+        for c in "abfnrtv":
+            string = string.replace(rf"\{c}", eval(rf'"\{c}"'))
+
+        return string
 
     async def async_client(self) -> None:
         self.reader, self.writer = await asyncio.open_connection(self.host, self.port)
