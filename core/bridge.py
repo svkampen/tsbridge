@@ -92,7 +92,7 @@ class Bridge:
 
             for link in self.links:
                 if link.name == meta.from_link: continue
-                await link.send_message(inst, message)
+                await link.send_message(meta, message)
 
             for dest in self.routes[f'{inst}#{message.channel}']:
                 inst, to_channel = dest.split('#')

@@ -81,8 +81,8 @@ class Link:
                 logger.debug("reading...")
                 size, *_ = struct.unpack('!I', await self.reader.readexactly(4))
                 logger.debug(f"got size: {size}")
-                inst, message = pickle.loads(await self.reader.readexactly(size))
-                meta = Metadata(from_link=self.name, from_instance=inst)
+                meta, message = pickle.loads(await self.reader.readexactly(size))
+                meta.from_link = self.name
                 await self.bridge.bus.queue.put((meta, message))
         except asyncio.IncompleteReadError:
             logger.warn(f"read was incomplete, assuming other end died. restarting link...")
