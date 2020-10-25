@@ -63,6 +63,11 @@ class OutPort(abc.ABC):
     async def put_message(self, message: AnyMessage) -> None:
         pass
 
+@dataclass
+class Metadata:
+    from_link: str
+    from_instance: str
+
 class Bus:
     queue: asyncio.Queue
 
@@ -71,11 +76,12 @@ class Bus:
 
     def port_for(self, instance_name: str) -> OutPort:
         async def put_message(_: OutPort, message: AnyMessage) -> None:
-            await self.queue.put((instance_name, message))
+            meta = Metadata(from_link='local', from_instance=instance_name)
+            await self.queue.put((meta, message))
 
         return type('outport', (OutPort,), {'put_message': put_message})()
 
-    async def get_message(self) -> Tuple[str, AnyMessage]:
+    async def get_message(self) -> Tuple[Metadata, AnyMessage]:
         return await self.queue.get()
 
 class Proto(abc.ABC):

@@ -2,10 +2,12 @@ import asyncio
 import logging
 import core.plugins
 import core.logging
+import core.link
 import sys
 from typing import Dict, Type, Set, Callable, List, Awaitable
 from asyncio import CancelledError
-from core.types import Proto, Bus, AttachmentHost, ServiceMessage
+from core.types import Proto, Bus, AttachmentHost, ServiceMessage, Metadata
+from core.link import Link
 from collections import defaultdict
 
 logger = logging.getLogger('bridge')
@@ -20,6 +22,7 @@ class Bridge:
         self.protocols = {}
         self.destructors = []
         self.instances = {}
+        self.links: List[Link] = []
         self.routes = defaultdict(set)
         self.bus = Bus()
         self.config = config
@@ -60,6 +63,12 @@ class Bridge:
 
     async def construct(self) -> None:
         self.loop = asyncio.get_event_loop()
+        for name, cfg in self.config['links'].items():
+            cfg['name'] = name
+            link = Link()
+            await link.start(self, cfg)
+            self.links.append(link)
+
         for name, cfg in self.config['instances'].items():
             try:
                 proto = self.protocols[cfg['proto']]
@@ -76,8 +85,15 @@ class Bridge:
 
     async def run_loop(self) -> None:
         while True:
-            inst, message = await self.bus.get_message()
-            logger.info(f'Got message on bus from {inst}: {message}')
+            meta, message = await self.bus.get_message()
+            logger.info(f'Got message on bus from {meta.from_instance}: {message}')
+
+            inst = meta.from_instance
+
+            for link in self.links:
+                if link.name == meta.from_link: continue
+                await link.send_message(inst, message)
+
             for dest in self.routes[f'{inst}#{message.channel}']:
                 inst, to_channel = dest.split('#')
                 if inst in self.instances:
