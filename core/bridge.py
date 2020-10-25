@@ -2,14 +2,12 @@ import asyncio
 import logging
 import core.plugins
 import core.logging
-import toml
 import sys
 from typing import Dict, Type, Set, Callable, List, Awaitable
 from asyncio import CancelledError
 from core.types import Proto, Bus, AttachmentHost, ServiceMessage
 from collections import defaultdict
 
-core.logging.init()
 logger = logging.getLogger('bridge')
 
 class Bridge:
@@ -18,15 +16,13 @@ class Bridge:
     routes: Dict[str, Set[str]]
     destructors: List[Callable[[], Awaitable]]
 
-    def __init__(self) -> None:
+    def __init__(self, config) -> None:
         self.protocols = {}
         self.destructors = []
         self.instances = {}
         self.routes = defaultdict(set)
         self.bus = Bus()
-
-        with open('config.toml', 'r') as f:
-            self.config = toml.load(f)
+        self.config = config
 
         plugin_loader = core.plugins.PluginLoader()
         self.plugins = plugin_loader.load_all()
