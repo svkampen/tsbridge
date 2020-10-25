@@ -40,6 +40,11 @@ class ServiceMessage:
 AnyMessage = Union[Message, ServiceMessage]
 
 @dataclass
+class MiscServiceMessage(ServiceMessage):
+    text: str
+    channel: Channel
+
+@dataclass
 class JoinMessage(ServiceMessage):
     user: User
     channel: Channel
