@@ -86,14 +86,14 @@ class Bus:
 
 class Proto(abc.ABC):
     @abc.abstractmethod
-    async def send_message(self, to_channel: Channel, message: Message) -> None:
+    async def send_message(self, to_channel: Channel, message: Message, meta: Metadata) -> None:
         pass
 
     @abc.abstractmethod
     async def start(self, bridge: 'core.bridge.Bridge', out_port: OutPort, instance_cfg: Config) -> None:
         pass
 
-    async def handle_service_message(self, to_channel: Channel, message: ServiceMessage) -> None:
+    async def handle_service_message(self, to_channel: Channel, message: ServiceMessage, meta: Metadata) -> None:
         pass
 
 import core.bridge

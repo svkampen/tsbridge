@@ -3,7 +3,7 @@ Inter-bridge links.
 """
 import core.types
 import core.bridge
-from core.types import Proto, Message, OutPort, Config, Channel, ServiceMessage, JoinMessage, PartMessage, Metadata, AnyMessage
+from core.types import Proto, Message, OutPort, Config, Channel, ServiceMessage, JoinMessage, PartMessage, Metadata, AnyMessage, Metadata
 from typing import Tuple, Optional
 import struct
 import pickle
@@ -94,12 +94,12 @@ class Link:
             await asyncio.sleep(5)
             asyncio.create_task(self.start(self.bridge, self.instance_cfg))
 
-    async def send_message(self, from_instance: str, message: AnyMessage) -> None:
+    async def send_message(self, meta: Metadata, message: AnyMessage) -> None:
         if not self.writer:
             return
 
         logger.info(f"Sending message {message}")
-        data = pickle.dumps((from_instance, message))
+        data = pickle.dumps((meta, message))
         size = len(data)
         size_encoded = struct.pack('!I', size)
         self.writer.write(size_encoded)

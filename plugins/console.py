@@ -2,10 +2,10 @@ import asyncio
 import sys
 from typing import Any, Mapping
 from core.bridge import Bridge
-from core.types import OutPort, Channel, Message, Proto, Config
+from core.types import OutPort, Channel, Message, Proto, Config, Metadata
 
 class Console(Proto):
-    async def send_message(self, to_channel: Channel, message: Message) -> None:
+    async def send_message(self, to_channel: Channel, message: Message, meta: Metadata) -> None:
         print(f'[{to_channel}] {message}')
 
     async def start(self, bridge: Bridge, out_port: OutPort, instance_cfg: Config) -> None:

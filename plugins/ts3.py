@@ -1,4 +1,4 @@
-from core.types import Proto, Message, OutPort, Config, Channel, Photo, ServiceMessage, JoinMessage, PartMessage, UserRequest, UserList
+from core.types import Proto, Message, OutPort, Config, Channel, Photo, ServiceMessage, JoinMessage, PartMessage, UserRequest, UserList, Metadata
 from typing import Any, Mapping, Dict
 from .server_query import ServerQueryClient, SQResult, SQError
 from core.bridge import Bridge
@@ -81,7 +81,7 @@ class TS3Proto(Proto):
         message = message.replace(r'\/', '/')
         return message
 
-    async def send_message(self, to_channel: Channel, message: Message) -> None:
+    async def send_message(self, to_channel: Channel, message: Message, meta: Metadata) -> None:
         logger.info(f'Got message to send to TS3: {message} (to channel: {to_channel})')
 
         txt = message.text
@@ -99,7 +99,7 @@ class TS3Proto(Proto):
                 raise
         await self.client.request(f'sendtextmessage targetmode=2 target={to_channel} msg={txt}')
 
-    async def handle_service_message(self, to_channel: Channel, message: ServiceMessage) -> None:
+    async def handle_service_message(self, to_channel: Channel, message: ServiceMessage, meta: Metadata) -> None:
         if isinstance(message, UserRequest):
             data = requests.get('https://ts.segfault.party/json').json()
             users = data['people']

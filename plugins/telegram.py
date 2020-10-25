@@ -1,6 +1,6 @@
 from telethon import TelegramClient, events
 from pprint import pprint
-from core.types import Proto, OutPort, Message, Attachment, Channel, Config, Photo, JoinMessage, PartMessage, ServiceMessage, UserRequest, UserList
+from core.types import Proto, OutPort, Message, Attachment, Channel, Config, Photo, JoinMessage, PartMessage, ServiceMessage, UserRequest, UserList, Metadata
 from core.bridge import Bridge
 from typing import Mapping, Any
 import asyncio
@@ -55,7 +55,7 @@ class TelegramProto(Proto):
 
         await self.out_port.put_message(message)
 
-    async def handle_service_message(self, to_channel: Channel, message: ServiceMessage) -> None:
+    async def handle_service_message(self, to_channel: Channel, message: ServiceMessage, meta: Metadata) -> None:
         to_channel = int(to_channel)
         if isinstance(message, JoinMessage):
             await self.client.send_message(to_channel, message=f"{message.user} joined.")
@@ -64,7 +64,7 @@ class TelegramProto(Proto):
         elif isinstance(message, UserList):
             await self.client.send_message(to_channel, message=f"Users: {', '.join(message.users)}.")
 
-    async def send_message(self, to_channel: Channel, message: Message) -> None:
+    async def send_message(self, to_channel: Channel, message: Message, meta: Metadata) -> None:
         logger.info(f'Sending message to channel {to_channel}: {message}')
         formatted = f'{message.user}: {message.text}'.strip()
         to_channel = int(to_channel)

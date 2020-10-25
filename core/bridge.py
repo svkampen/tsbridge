@@ -98,7 +98,7 @@ class Bridge:
                 inst, to_channel = dest.split('#')
                 if inst in self.instances:
                     if isinstance(message, ServiceMessage):
-                        await self.instances[inst].handle_service_message(to_channel, message)
+                        await self.instances[inst].handle_service_message(to_channel, message, meta)
                     else:
-                        await self.instances[inst].send_message(to_channel, message)
+                        await self.instances[inst].send_message(to_channel, message, meta)
 

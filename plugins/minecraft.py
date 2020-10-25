@@ -1,9 +1,9 @@
 """
 * depends: imgflt
 """
-from core.types import Proto, OutPort, Message, Attachment, Channel, Config, Photo, JoinMessage, PartMessage, ServiceMessage, UserRequest, UserList
+from core.types import Proto, OutPort, Message, Attachment, Channel, Config, Photo, JoinMessage, PartMessage, ServiceMessage, UserRequest, UserList, Metadata
 from core.bridge import Bridge
-from typing import Mapping, Any
+from typing import Mapping, Any, Callable, Coroutine, Sequence, List, Dict
 import logging
 import json
 import inspect
@@ -19,13 +19,15 @@ SERVER_MESSAGE_RE = re.compile(r"\[[0-9:]+\] \[Server thread/[ A-Z]+\]: (.+)")
 
 USERNAME = "[A-Za-z0-9_-]+"
 
-def match(regex):
-    def decorator(fn):
+Groups = Sequence[str]
+
+def match(regex: str) -> Callable:
+    def decorator(fn: Callable) -> Callable:
         @functools.wraps(fn)
-        async def wrapper(self, line, *args, **kwargs):
+        async def wrapper(self: 'MinecraftProto', line: str) -> None:
             if (re_match := re.match(regex, line)):
-                await fn(self, line, re_match.groups(), *args, **kwargs)
-        wrapper._is_match = True
+                await fn(self, line, re_match.groups())
+        wrapper._is_match = True  # type: ignore
         return wrapper
     return decorator
 
@@ -44,7 +46,7 @@ class MinecraftProto(Proto):
             if hasattr(fn, '_is_match'):
                 self.match_funcs.append(fn)
 
-    def handle_recv(self):
+    def handle_recv(self) -> None:
         line = self.pty_reader.readline().strip()
         logger.info(f"Read line from PTY: {line!r}")
         match = SERVER_MESSAGE_RE.match(line)
@@ -56,8 +58,9 @@ class MinecraftProto(Proto):
             asyncio.create_task(fn(text))
 
     @match(f"({USERNAME}) (joined|left) the game")
-    async def join_part(self, line, groups):
+    async def join_part(self, line: str, groups: Groups) -> None:
         logger.info(f"{groups[1].title()}: {groups[0]}")
+        msg: ServiceMessage
         if groups[1] == "joined":
             msg = JoinMessage(groups[0], CHANNEL_NAME)
         else:
@@ -65,25 +68,25 @@ class MinecraftProto(Proto):
         await self.out_port.put_message(msg)
 
     @match(f"[\\[<]({USERNAME})[>\\]] (.+)")
-    async def message(self, line, groups):
+    async def message(self, line: str, groups: Groups) -> None:
         user, message = groups
         logger.info(f"Message from {user}: {message}")
-        message = Message(user, message, CHANNEL_NAME)
-        await self.out_port.put_message(message)
+        msg = Message(user, message, CHANNEL_NAME)
+        await self.out_port.put_message(msg)
 
     @match(r"There are (\d+) of a max of (\d+) players online: (.+)")
-    async def online(self, line, groups):
+    async def online(self, line: str, groups: Groups) -> None:
         _, _, users = groups
         ulist = UserList(users.split(', '), CHANNEL_NAME)
         await self.out_port.put_message(ulist)
 
     @match(f"{USERNAME} has made the advancement .+")
-    async def advancement(self, line, groups):
+    async def advancement(self, line: str, groups: Groups) -> None:
         pass
 
-    async def send_message(self, to_channel: Channel, message: Message):
+    async def send_message(self, to_channel: Channel, message: Message, meta: Metadata) -> None:
         logger.info(f"Got message to send: {message}")
-        fmt = [{'text': 'Bridge: ', 'color': 'blue'}]
+        fmt: List[Dict[str, Any]] = [{'text': 'Bridge: ', 'color': 'blue'}]
 
         for attachment in message.attachments:
             if isinstance(attachment, Photo):
@@ -94,7 +97,7 @@ class MinecraftProto(Proto):
         self.pty_writer.write("tellraw @a " + json.dumps(fmt) + "\n")
         self.pty_writer.flush()
 
-    async def handle_service_message(self, to_channel: Channel, message: ServiceMessage):
+    async def handle_service_message(self, to_channel: Channel, message: ServiceMessage, meta: Metadata) -> None:
         if isinstance(message, UserRequest):
             self.pty_writer.write("list\n")
 
