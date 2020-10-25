@@ -1,5 +1,5 @@
 from core.types import Proto, Message, OutPort, Config, Channel, Photo, ServiceMessage, JoinMessage, PartMessage, UserRequest, UserList
-from typing import Any, Mapping
+from typing import Any, Mapping, Dict
 from .server_query import ServerQueryClient, SQResult, SQError
 from core.bridge import Bridge
 import requests
@@ -45,7 +45,7 @@ class TS3Proto(Proto):
             elif ('notifyclientleftview' in data):
                 await self.handle_notify_part(data)
 
-    async def handle_notify_join(self, data) -> None:
+    async def handle_notify_join(self, data: Dict) -> None:
         """ Handle a join notification """
         if (data['client_type'] != '0'): return
 
@@ -55,7 +55,7 @@ class TS3Proto(Proto):
         self.clid_users[clid] = name
         await self.out_port.put_message(JoinMessage(name, channel_id))
 
-    async def handle_notify_part(self, data) -> None:
+    async def handle_notify_part(self, data: Dict) -> None:
         clid = int(data['clid'])
         if (clid in self.clid_users):
             name = self.clid_users[clid]
@@ -65,7 +65,7 @@ class TS3Proto(Proto):
         else:
             logger.warning(f"Unable to find client with id {clid} in user list! (maybe a SQ client).")
 
-    async def handle_notify_text(self, data) -> None:
+    async def handle_notify_text(self, data: Dict) -> None:
         """ Handle a text notification """
         message = Message(user=data['invokername'], text=data['msg'], channel='46')
         if (message.user in self.blacklisted_users): return
@@ -76,7 +76,7 @@ class TS3Proto(Proto):
             message.text = self.url_strip(message.text)
         await self.out_port.put_message(message)
 
-    def url_strip(self, message):
+    def url_strip(self, message: str) -> str:
         message = URL_RE.sub(r'\1', message)
         message = message.replace(r'\/', '/')
         return message

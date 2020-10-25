@@ -21,7 +21,7 @@ class TelegramProto(Proto):
         self.client.add_event_handler(self.message_handler)
         self.out_port = out_port
 
-    async def send_user_request(self, from_channel):
+    async def send_user_request(self, from_channel: Channel) -> None:
         await self.out_port.put_message(UserRequest(from_channel))
 
     @events.register(events.NewMessage)

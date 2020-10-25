@@ -35,7 +35,9 @@ class Message:
     attachments: Sequence[Attachment] = field(default_factory=list)
 
 class ServiceMessage:
-    pass
+    channel: Channel
+
+AnyMessage = Union[Message, ServiceMessage]
 
 @dataclass
 class JoinMessage(ServiceMessage):
@@ -58,7 +60,7 @@ class PartMessage(ServiceMessage):
 
 class OutPort(abc.ABC):
     @abc.abstractmethod
-    async def put_message(self, message: Message) -> None:
+    async def put_message(self, message: AnyMessage) -> None:
         pass
 
 class Bus:
@@ -68,12 +70,12 @@ class Bus:
         self.queue = asyncio.Queue()
 
     def port_for(self, instance_name: str) -> OutPort:
-        async def put_message(_: OutPort, message: Message) -> None:
+        async def put_message(_: OutPort, message: AnyMessage) -> None:
             await self.queue.put((instance_name, message))
 
         return type('outport', (OutPort,), {'put_message': put_message})()
 
-    async def get_message(self) -> Tuple[str, Message]:
+    async def get_message(self) -> Tuple[str, AnyMessage]:
         return await self.queue.get()
 
 class Proto(abc.ABC):

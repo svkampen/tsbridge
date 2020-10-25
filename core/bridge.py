@@ -16,7 +16,7 @@ class Bridge:
     routes: Dict[str, Set[str]]
     destructors: List[Callable[[], Awaitable]]
 
-    def __init__(self, config) -> None:
+    def __init__(self, config: Dict) -> None:
         self.protocols = {}
         self.destructors = []
         self.instances = {}

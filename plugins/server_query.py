@@ -159,7 +159,7 @@ class ServerQueryClient:
         return (None, None)
 
     @staticmethod
-    def escape(string: str):
+    def escape(string: str) -> str:
         """ Escape a string according to the replacement rules in the SQ manual. """
         string = string.replace('\\', r'\\').replace('/', r'\/').replace(' ', r'\s').replace('|', r'\p')
 
@@ -170,7 +170,7 @@ class ServerQueryClient:
         return string
 
     @staticmethod
-    def unescape(string: str):
+    def unescape(string: str) -> str:
         """ Unescape a string """
         string = string.replace(r'\\', '\\').replace(r'\/', '/').replace(r'\s', ' ').replace(r'\p', '|')
 
