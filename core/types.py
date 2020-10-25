@@ -34,6 +34,28 @@ class Message:
     channel: Channel
     attachments: Sequence[Attachment] = field(default_factory=list)
 
+class ServiceMessage:
+    pass
+
+@dataclass
+class JoinMessage(ServiceMessage):
+    user: User
+    channel: Channel
+
+@dataclass
+class UserRequest(ServiceMessage):
+    channel: Channel
+
+@dataclass
+class UserList(ServiceMessage):
+    users: List[User]
+    channel: Channel
+
+@dataclass
+class PartMessage(ServiceMessage):
+    user: User
+    channel: Channel
+
 class OutPort(abc.ABC):
     @abc.abstractmethod
     async def put_message(self, message: Message) -> None:
@@ -61,6 +83,9 @@ class Proto(abc.ABC):
 
     @abc.abstractmethod
     async def start(self, bridge: 'core.bridge.Bridge', out_port: OutPort, instance_cfg: Config) -> None:
+        pass
+
+    async def handle_service_message(self, to_channel: Channel, message: ServiceMessage) -> None:
         pass
 
 import core.bridge

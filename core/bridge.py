@@ -6,7 +6,7 @@ import toml
 import sys
 from typing import Dict, Type, Set, Callable, List, Awaitable
 from asyncio import CancelledError
-from core.types import Proto, Bus, AttachmentHost
+from core.types import Proto, Bus, AttachmentHost, ServiceMessage
 from collections import defaultdict
 
 core.logging.init()
@@ -85,5 +85,8 @@ class Bridge:
             for dest in self.routes[f'{inst}#{message.channel}']:
                 inst, to_channel = dest.split('#')
                 if inst in self.instances:
-                    await self.instances[inst].send_message(to_channel, message)
+                    if isinstance(message, ServiceMessage):
+                        await self.instances[inst].handle_service_message(to_channel, message)
+                    else:
+                        await self.instances[inst].send_message(to_channel, message)
 
