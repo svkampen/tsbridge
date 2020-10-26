@@ -10,6 +10,7 @@ import inspect
 import asyncio
 import functools
 import re
+import io
 
 logger = logging.getLogger('minecraft')
 
@@ -36,26 +37,32 @@ class MinecraftProto(Proto):
     Protocol to interact with a Minecraft server over a pseudoterminal.
     """
     async def start(self, bridge: Bridge, out_port: OutPort, instance_cfg: Config) -> None:
-        self.pty_reader = open(instance_cfg['pty_file'], 'r')
-        self.pty_writer = open(instance_cfg['pty_file'], 'w')
+        self.pty = io.FileIO(instance_cfg['pty_file'], 'r+')
         self.img_host = bridge.get_attachment_host()
         self.out_port = out_port
-        asyncio.get_event_loop().add_reader(self.pty_reader, self.handle_recv)
+        asyncio.get_event_loop().add_reader(self.pty, self.handle_recv)
         self.match_funcs = []
         for _, fn in inspect.getmembers(self, predicate=callable):
             if hasattr(fn, '_is_match'):
                 self.match_funcs.append(fn)
 
-    def handle_recv(self) -> None:
-        line = self.pty_reader.readline().strip()
-        logger.info(f"Read line from PTY: {line!r}")
-        match = SERVER_MESSAGE_RE.match(line)
-        if not match:
-            return
+        self.buffer = ""
 
-        text = match.group(1)
-        for fn in self.match_funcs:
-            asyncio.create_task(fn(text))
+    def handle_recv(self) -> None:
+        data = self.pty.read(8192).decode('utf-8')
+        self.buffer += data
+
+        *lines, self.buffer = self.buffer.split('\n')
+
+        for line in lines:
+            logger.info(f"Read line from PTY: {line!r}")
+            match = SERVER_MESSAGE_RE.match(line)
+            if not match:
+                return
+
+            text = match.group(1)
+            for fn in self.match_funcs:
+                asyncio.create_task(fn(text))
 
     @match(f"({USERNAME}) (joined|left) the game")
     async def join_part(self, line: str, groups: Groups) -> None:
@@ -94,12 +101,12 @@ class MinecraftProto(Proto):
                 fmt.append({'text': '[IMG]', 'color': 'gold', 'clickEvent': {'action': 'open_url', 'value': url}})
 
         fmt.append({'text': f"{message.user}: {message.text}", 'color': 'white'})
-        self.pty_writer.write("tellraw @a " + json.dumps(fmt) + "\n")
-        self.pty_writer.flush()
+        self.pty.write(("tellraw @a " + json.dumps(fmt) + "\n").encode('utf-8'))
+        self.pty.flush()
 
     async def handle_service_message(self, to_channel: Channel, message: ServiceMessage, meta: Metadata) -> None:
         if isinstance(message, UserRequest):
-            self.pty_writer.write("list\n")
+            self.pty.write(b"list\n")
 
 def init(bridge: Bridge) -> None:
     bridge.add_protocol('minecraft', MinecraftProto)
