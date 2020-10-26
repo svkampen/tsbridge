@@ -4,6 +4,7 @@ import core.plugins
 import core.logging
 import core.link
 import sys
+import toml
 from typing import Dict, Type, Set, Callable, List, Awaitable
 from asyncio import CancelledError
 from core.types import Proto, Bus, AttachmentHost, ServiceMessage, Metadata
@@ -55,7 +56,12 @@ class Bridge:
             await self.run_loop()
         except CancelledError:
             await self.run_destructors()
+            self.dump_config()
             raise
+
+    def dump_config(self):
+        with open('config.toml', 'w') as f:
+            toml.dump(self.config, f)
 
     async def run_destructors(self) -> None:
         for destructor in self.destructors:
