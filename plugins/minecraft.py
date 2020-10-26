@@ -106,12 +106,13 @@ class MinecraftProto(Proto):
 
     async def send_message(self, to_channel: Channel, message: Message, meta: Metadata) -> None:
         logger.info(f"Got message to send: {message}")
-        fmt: List[Dict[str, Any]] = [{'text': 'Bridge: ', 'color': 'blue'}]
+        from_name = meta.from_instance.upper()
+        fmt: List[Dict[str, Any]] = [{'text': f'[{from_name}] ', 'color': 'blue'}]
 
         for attachment in message.attachments:
             if isinstance(attachment, Photo):
                 url = await self.img_host.put(attachment.get())
-                fmt.append({'text': '[IMG]', 'color': 'gold', 'clickEvent': {'action': 'open_url', 'value': url}})
+                fmt.append({'text': '[IMG] ', 'color': 'gold', 'clickEvent': {'action': 'open_url', 'value': url}})
 
         fmt.append({'text': f"{message.user}: {message.text}", 'color': 'white'})
         self.pty.write(("tellraw @a " + json.dumps(fmt) + "\n").encode('utf-8'))
