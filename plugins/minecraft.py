@@ -60,15 +60,19 @@ class MinecraftProto(Proto):
 
         *lines, self.buffer = self.buffer.split('\n')
 
-        for line in lines:
-            logger.info(f"Read line from PTY: {line!r}")
-            match = SERVER_MESSAGE_RE.match(line)
-            if not match:
-                continue
+        async def handle_matches(lines):
+            for line in lines:
+                logger.info(f"Read line from PTY: {line!r}")
+                match = SERVER_MESSAGE_RE.match(line)
+                if not match:
+                    continue
 
-            text = match.group(1)
-            for fn in self.match_funcs:
-                asyncio.create_task(fn(text))
+                text = match.group(1)
+                for fn in self.match_funcs:
+                    await fn(text)
+
+        asyncio.create_task(handle_matches(lines))
+
 
     @match(f"({USERNAME}) (joined|left) the game")
     async def join_part(self, line: str, groups: Groups) -> None:
