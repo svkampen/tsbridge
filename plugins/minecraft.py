@@ -64,7 +64,7 @@ class MinecraftProto(Proto):
             logger.info(f"Read line from PTY: {line!r}")
             match = SERVER_MESSAGE_RE.match(line)
             if not match:
-                return
+                continue
 
             text = match.group(1)
             for fn in self.match_funcs:
