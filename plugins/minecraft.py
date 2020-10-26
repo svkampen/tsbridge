@@ -98,12 +98,17 @@ class MinecraftProto(Proto):
         msg = Message(user_mapped, message, CHANNEL_NAME)
         await self.out_port.put_message(msg)
 
-    @match(r"There are (\d+) of a max of (\d+) players online: (.+)")
+    @match(r"There are (\d+) of a max of (\d+) players online: (.*)")
     async def online(self, line: str, groups: Groups) -> None:
+        ulist: UserList
         _, _, users = groups
-        users = users.split(', ')
-        users_mapped = [self.user_map.get(user, user) for user in users]
-        ulist = UserList(users_mapped, CHANNEL_NAME)
+
+        if users:
+            users = users.split(', ')
+            users_mapped = [self.user_map.get(user, user) for user in users]
+            ulist = UserList(users_mapped, CHANNEL_NAME)
+        else:
+            ulist = UserList([], CHANNEL_NAME)
         await self.out_port.put_message(ulist)
 
     @match(f"({USERNAME})( {DEATH_MESSAGES}.*)")
