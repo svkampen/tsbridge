@@ -88,7 +88,6 @@ class Bridge:
             await proto_inst.start(self, self.bus.port_for(name), cfg)
             self.instances[name] = proto_inst
 
-
     async def run_loop(self) -> None:
         while True:
             meta, message = await self.bus.get_message()
