@@ -38,10 +38,14 @@ class MinecraftProto(Proto):
     """
     async def start(self, bridge: Bridge, out_port: OutPort, instance_cfg: Config) -> None:
         self.pty = io.FileIO(instance_cfg['pty_file'], 'r+')
+        self.config = instance_cfg
+        if 'user_map' not in self.config:
+            self.config['user_map'] = {}
         self.img_host = bridge.get_attachment_host()
         self.out_port = out_port
         asyncio.get_event_loop().add_reader(self.pty, self.handle_recv)
         self.match_funcs = []
+        self.user_map: Dict[str, str] = self.config['user_map']
         for _, fn in inspect.getmembers(self, predicate=callable):
             if hasattr(fn, '_is_match'):
                 self.match_funcs.append(fn)
@@ -67,24 +71,33 @@ class MinecraftProto(Proto):
     @match(f"({USERNAME}) (joined|left) the game")
     async def join_part(self, line: str, groups: Groups) -> None:
         logger.info(f"{groups[1].title()}: {groups[0]}")
+        user, action = groups
+        user_mapped = self.user_map.get(user, user)
         msg: ServiceMessage
         if groups[1] == "joined":
-            msg = JoinMessage(groups[0], CHANNEL_NAME)
+            msg = JoinMessage(user_mapped, CHANNEL_NAME)
         else:
-            msg = PartMessage(groups[0], CHANNEL_NAME)
+            msg = PartMessage(user_mapped, CHANNEL_NAME)
         await self.out_port.put_message(msg)
 
     @match(f"[\\[<]({USERNAME})[>\\]] (.+)")
     async def message(self, line: str, groups: Groups) -> None:
         user, message = groups
-        logger.info(f"Message from {user}: {message}")
-        msg = Message(user, message, CHANNEL_NAME)
+        if message.startswith('.nickname '):
+            self.user_map[user] = message.split('.nickname ')[1]
+            return
+
+        user_mapped = self.user_map.get(user, user)
+        logger.info(f"Message from {user_mapped}: {message}")
+        msg = Message(user_mapped, message, CHANNEL_NAME)
         await self.out_port.put_message(msg)
 
     @match(r"There are (\d+) of a max of (\d+) players online: (.+)")
     async def online(self, line: str, groups: Groups) -> None:
         _, _, users = groups
-        ulist = UserList(users.split(', '), CHANNEL_NAME)
+        users = users.split(', ')
+        users_mapped = [self.user_map.get(user, user) for user in users]
+        ulist = UserList(users_mapped, CHANNEL_NAME)
         await self.out_port.put_message(ulist)
 
     @match(f"{USERNAME} has made the advancement .+")
