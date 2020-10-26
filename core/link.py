@@ -84,7 +84,7 @@ class Link:
                 meta, message = pickle.loads(await self.reader.readexactly(size))
                 meta.from_link = self.name
                 await self.bridge.bus.queue.put((meta, message))
-        except asyncio.IncompleteReadError:
+        except (asyncio.IncompleteReadError, ConnectionResetError):
             logger.warn(f"read was incomplete, assuming other end died. restarting link...")
             if hasattr(self, 'server'):
                 self.server.close()
