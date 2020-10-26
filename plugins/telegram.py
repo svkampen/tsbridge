@@ -58,11 +58,12 @@ class TelegramProto(Proto):
     async def handle_service_message(self, to_channel: Channel, message: ServiceMessage, meta: Metadata) -> None:
         to_channel = int(to_channel)
         if isinstance(message, JoinMessage):
-            await self.client.send_message(to_channel, message=f"{message.user} joined.")
+            await self.client.send_message(to_channel, message=f"[{meta.from_instance.upper()}] {message.user} joined.")
         elif isinstance(message, PartMessage):
-            await self.client.send_message(to_channel, message=f"{message.user} left.", silent=True)
+            await self.client.send_message(to_channel, message=f"[{meta.from_instance.upper()}] {message.user} left.", silent=True)
         elif isinstance(message, UserList):
-            await self.client.send_message(to_channel, message=f"Users: {', '.join(message.users)}.")
+            ulist = "Nobody is online" if not message.users else "Users:\n%s" % ('\n'.join(message.users))
+            await self.client.send_message(to_channel, message=f"[{meta.from_instance.upper()}] {ulist}.")
         elif isinstance(message, MiscServiceMessage):
             await self.client.send_message(to_channel, message=message.text)
 
