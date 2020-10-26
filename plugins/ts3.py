@@ -93,7 +93,7 @@ class TS3Proto(Proto):
         txt = ServerQueryClient.escape(txt).strip()
 
         try:
-            await self.client.request(f'clientupdate client_nickname=Bridge-{message.user}')
+            await self.client.request(f'clientupdate client_nickname=Bridge-{meta.from_instance}-{message.user}')
         except SQError as e:
             if e.errno != 513: # nick already in use
                 raise
