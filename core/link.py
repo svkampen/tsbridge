@@ -98,10 +98,13 @@ class Link:
         if not self.writer:
             return
 
-        logger.info(f"Sending message {message}")
-        data = pickle.dumps((meta, message))
-        size = len(data)
-        size_encoded = struct.pack('!I', size)
-        self.writer.write(size_encoded)
-        self.writer.write(data)
-        await self.writer.drain()
+        try:
+            logger.info(f"Sending message {message}")
+            data = pickle.dumps((meta, message))
+            size = len(data)
+            size_encoded = struct.pack('!I', size)
+            self.writer.write(size_encoded)
+            self.writer.write(data)
+            await self.writer.drain()
+        except ConnectionResetError:
+            pass
