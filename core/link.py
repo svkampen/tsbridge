@@ -86,11 +86,14 @@ class Link:
                 await self.bridge.bus.queue.put((meta, message))
         except (asyncio.IncompleteReadError, ConnectionResetError):
             logger.warn(f"read was incomplete, assuming other end died. restarting link...")
-            if hasattr(self, 'server'):
-                self.server.close()
-                await self.server.wait_closed()
-            self.writer.close()
-            await self.writer.wait_closed()
+            try:
+                if hasattr(self, 'server'):
+                    self.server.close()
+                    await self.server.wait_closed()
+                self.writer.close()
+                await self.writer.wait_closed()
+            except:
+                pass
             await asyncio.sleep(5)
             asyncio.create_task(self.start(self.bridge, self.instance_cfg))
 
