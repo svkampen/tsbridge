@@ -29,6 +29,7 @@ class AttachmentHost(abc.ABC):
 
 @dataclass
 class Message:
+    """ A message sent in a given channel, optionally as a reply to another and optionally containing attachments. """
     user: User
     text: str
     channel: Channel
