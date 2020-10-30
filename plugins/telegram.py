@@ -6,6 +6,7 @@ from typing import Mapping, Any
 import asyncio
 from io import BytesIO
 import logging
+import telethon
 
 logger = logging.getLogger('telegram')
 
@@ -24,9 +25,20 @@ class TelegramProto(Proto):
     async def send_user_request(self, from_channel: Channel) -> None:
         await self.out_port.put_message(UserRequest(from_channel))
 
+    async def get_reply_message(self, event: events.NewMessage) -> Message:
+        reply = await event.get_reply_message()
+        reply_sender = await reply.get_sender()
+
+        message = Message(user=reply_sender.first_name, text=reply.message,
+                          channel=reply.chat_id, attachments=[])
+
+        return message
+
     @events.register(events.NewMessage)
     async def message_handler(self, event: events.NewMessage) -> None:
-        sender = await event.get_sender()
+        sender: telethon.types.User = await event.get_sender()
+
+        reply_message = await self.get_reply_message(event)
 
         attachments = []
 
@@ -45,7 +57,8 @@ class TelegramProto(Proto):
             return await self.send_user_request(event.chat_id)
 
         message = Message(user=sender.first_name, text=event.raw_text,
-                          channel=event.chat_id, attachments=attachments)
+                          channel=event.chat_id, reply_to=reply_message,
+                          attachments=attachments)
 
         if 'tasks' in event.raw_text:
             # debugging level: 100%
