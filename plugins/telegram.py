@@ -2,7 +2,7 @@ from telethon import TelegramClient, events
 from pprint import pprint
 from core.types import Proto, OutPort, Message, Attachment, Channel, Config, Photo, JoinMessage, PartMessage, ServiceMessage, UserRequest, UserList, Metadata, MiscServiceMessage
 from core.bridge import Bridge
-from typing import Mapping, Any
+from typing import Mapping, Any, Optional
 import asyncio
 from io import BytesIO
 import logging
