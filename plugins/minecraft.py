@@ -3,7 +3,7 @@
 """
 from core.types import Proto, OutPort, Message, Attachment, Channel, Config, Photo, JoinMessage, PartMessage, ServiceMessage, UserRequest, UserList, Metadata, MiscServiceMessage
 from core.bridge import Bridge
-from typing import Mapping, Any, Callable, Coroutine, Sequence, List, Dict
+from typing import Mapping, Any, Callable, Coroutine, Sequence, List, Dict, Optional
 import logging
 import json
 import inspect
@@ -28,7 +28,8 @@ def match(regex: str) -> Callable:
     def decorator(fn: Callable) -> Callable:
         @functools.wraps(fn)
         async def wrapper(self: 'MinecraftProto', line: str) -> None:
-            if (re_match := re.match(regex, line)):
+            re_match = re.match(regex, line)
+            if re_match:
                 await fn(self, line, re_match.groups())
         wrapper._is_match = True  # type: ignore
         return wrapper
@@ -40,7 +41,7 @@ class MinecraftProto(Proto):
     """
     async def start(self, bridge: Bridge, out_port: OutPort, instance_cfg: Config) -> None:
         self.pty = io.FileIO(instance_cfg['pty_file'], 'r+')
-        self.config = instance_cfg
+        self.config: Config = instance_cfg
         if 'user_map' not in self.config:
             self.config['user_map'] = {}
         self.img_host = bridge.get_attachment_host()
@@ -55,12 +56,14 @@ class MinecraftProto(Proto):
         self.buffer = ""
 
     def handle_recv(self) -> None:
-        data = self.pty.read(8192).decode('utf-8')
+        # mypy will complain, but read should never return None here
+        # as we've just been informed data /is/ available.
+        data = self.pty.read(8192).decode('utf-8')  # type: ignore
         self.buffer += data
 
         *lines, self.buffer = self.buffer.split('\n')
 
-        async def handle_matches(lines):
+        async def handle_matches(lines: List[str]) -> None:
             for line in lines:
                 logger.info(f"Read line from PTY: {line!r}")
                 match = SERVER_MESSAGE_RE.match(line)
@@ -104,8 +107,7 @@ class MinecraftProto(Proto):
         _, _, users = groups
 
         if users:
-            users = users.split(', ')
-            users_mapped = [self.user_map.get(user, user) for user in users]
+            users_mapped = [self.user_map.get(user, user) for user in users.split(', ')]
             ulist = UserList(users_mapped, CHANNEL_NAME)
         else:
             ulist = UserList([], CHANNEL_NAME)

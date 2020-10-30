@@ -2,12 +2,12 @@
 import abc
 import asyncio
 from dataclasses import dataclass, field
-from typing import IO, Sequence, List, Mapping, Any, Union, Iterable, Tuple
+from typing import IO, Sequence, List, Mapping, Any, Union, Iterable, Tuple, Dict
 from io import BytesIO
 
 Channel = Union[str, int]
 User = str
-Config = Mapping[str, Any]
+Config = Dict[str, Any]
 
 class Attachment(abc.ABC):
     @abc.abstractmethod

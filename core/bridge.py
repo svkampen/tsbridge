@@ -59,7 +59,7 @@ class Bridge:
             self.dump_config()
             raise
 
-    def dump_config(self):
+    def dump_config(self) -> None:
         with open('config.toml', 'w') as f:
             toml.dump(self.config, f)
 
