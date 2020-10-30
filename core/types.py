@@ -2,7 +2,7 @@
 import abc
 import asyncio
 from dataclasses import dataclass, field
-from typing import IO, Sequence, List, Mapping, Any, Union, Iterable, Tuple, Dict
+from typing import IO, Sequence, List, Mapping, Any, Union, Iterable, Tuple, Dict, Optional
 from io import BytesIO
 
 Channel = Union[str, int]
@@ -32,6 +32,7 @@ class Message:
     user: User
     text: str
     channel: Channel
+    reply_to: Optional['Message'] = field(default=None)
     attachments: Sequence[Attachment] = field(default_factory=list)
 
 class ServiceMessage:
