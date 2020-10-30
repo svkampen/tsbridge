@@ -25,8 +25,11 @@ class TelegramProto(Proto):
     async def send_user_request(self, from_channel: Channel) -> None:
         await self.out_port.put_message(UserRequest(from_channel))
 
-    async def get_reply_message(self, event: events.NewMessage) -> Message:
+    async def get_reply_message(self, event: events.NewMessage) -> Optional[Message]:
         reply = await event.get_reply_message()
+        if not reply:
+            return None
+
         reply_sender = await reply.get_sender()
 
         message = Message(user=reply_sender.first_name, text=reply.message,
