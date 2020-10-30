@@ -139,8 +139,16 @@ class MinecraftProto(Proto):
         self.pty.flush()
 
     async def handle_service_message(self, to_channel: Channel, message: ServiceMessage, meta: Metadata) -> None:
+        from_name = meta.from_instance.upper()
+        fmt: List[Dict[str, Any]] = [{'text': f'[{from_name}] ', 'color': 'blue'}]
         if isinstance(message, UserRequest):
             self.pty.write(b"list\n")
+        if isinstance(message, JoinMessage):
+            fmt.append({'text': f'{message.user} joined.', 'color': 'green'})
+            self.pty.write(("tellraw @a " + json.dumps(fmt) + '\n').encode('utf-8'))
+        if isinstance(message, PartMessage):
+            fmt.append({'text': f'{message.user} left.', 'color': 'red'})
+            self.pty.write(("tellraw @a " + json.dumps(fmt) + '\n').encode('utf-8'))
 
 def init(bridge: Bridge) -> None:
     bridge.add_protocol('minecraft', MinecraftProto)
