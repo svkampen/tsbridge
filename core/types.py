@@ -33,7 +33,8 @@ class Message:
     user: User
     text: str
     channel: Channel
-    reply_to: Optional['Message'] = field(default=None)
+    reply_to: Optional['AnyMessage'] = field(default=None)
+    reply_to_origin: Optional[str] = field(default=None)
     attachments: Sequence[Attachment] = field(default_factory=list)
 
 class ServiceMessage:

@@ -76,6 +76,7 @@ class Bridge:
             self.links.append(link)
 
         for name, cfg in self.config['instances'].items():
+            cfg['name'] = name
             try:
                 proto = self.protocols[cfg['proto']]
             except KeyError:
