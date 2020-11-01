@@ -124,17 +124,31 @@ class MinecraftProto(Proto):
     async def advancement(self, line: str, groups: Groups) -> None:
         pass
 
-    async def send_message(self, to_channel: Channel, message: Message, meta: Metadata) -> None:
-        logger.info(f"Got message to send: {message}")
-        from_name = meta.from_instance.upper()
-        fmt: List[Dict[str, Any]] = [{'text': f'[{from_name}] ', 'color': 'blue'}]
+    async def generate_msg_json(self, from_instance: str, message: Message, handle_attachments: bool = True) -> Any:
+        fmt: List[Dict[str, Any]] = [{'text': f'[{from_instance}] ', 'color': 'blue'}]
 
         for attachment in message.attachments:
             if isinstance(attachment, Photo):
-                url = await self.img_host.put(attachment.get())
+                url = await self.img_host.put(attachment.get()) if handle_attachments else ''
                 fmt.append({'text': '[IMG] ', 'color': 'gold', 'clickEvent': {'action': 'open_url', 'value': url}})
 
+        if message.reply_to is not None:
+            # don't handle attachments in replies as clickEvent doesn't work in tooltips anyway.
+            origin = (message.reply_to_origin or '?').upper()
+            if isinstance(message.reply_to, Message):
+                reply_fmt = await self.generate_msg_json(origin, message.reply_to, False)
+                fmt.append({'text': '[REPLY] ', 'color': 'dark_red', 'hoverEvent': {'action': 'show_text', 'contents': reply_fmt}})
+
         fmt.append({'text': f"{message.user}: {message.text}", 'color': 'white'})
+        return fmt
+
+
+    async def send_message(self, to_channel: Channel, message: Message, meta: Metadata) -> None:
+        logger.info(f"Got message to send: {message}")
+        from_name = meta.from_instance.upper()
+
+        fmt = await self.generate_msg_json(from_name, message)
+
         self.pty.write(("tellraw @a " + json.dumps(fmt) + "\n").encode('utf-8'))
         self.pty.flush()
 
