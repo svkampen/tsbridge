@@ -1,6 +1,7 @@
 #!/bin/bash
 # pre-commit script which runs mypy and (optionally) tests
 
+EXIT_CODE=0
 TOP_LEVEL=$(git rev-parse --show-toplevel)
 pushd "$TOP_LEVEL" 2>&1 1>/dev/null
 
@@ -18,8 +19,6 @@ git stash push -u -m 'Unstaged changes and untracked files' 2>&1 1>/dev/null
 git reset --soft HEAD^ 2>&1 1>/dev/null
 
 mypy core plugins
-
-EXIT_CODE=0
 
 if [ $? -eq 1 ]
 then
