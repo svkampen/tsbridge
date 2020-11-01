@@ -43,9 +43,9 @@ class Link:
 
         logger.info(f'starting link {self.name!r} ({remote} <-> {local})')
 
-        ssl = instance_cfg.get('ssl', False)
-        self.ssl_config: Optional[SSLConfig] = self.get_ssl_config() if ssl else None
-        if ssl and self.ssl_config is None:
+        self.using_ssl = instance_cfg.get('ssl', False)
+        self.ssl_config: Optional[SSLConfig] = self.get_ssl_config() if self.using_ssl else None
+        if self.using_ssl and self.ssl_config is None:
             logger.error("unable to get ssl config, link failed.")
             return
 
@@ -99,10 +99,10 @@ class Link:
         try:
             logger.info("trying to connect to remote host..")
             extra_kwargs: Dict = {}
-            if self.ssl_config:
+            if self.using_ssl:
                 ssl_ctx = self.get_ssl_client_context()
                 extra_kwargs['ssl'] = ssl_ctx
-                extra_kwargs['server_hostname'] = self.ssl_config.peer_hostname
+                extra_kwargs['server_hostname'] = self.ssl_config.peer_hostname  # type: ignore
                 if not ssl_ctx:
                     logger.error("unable to construct ssl context, link failed.")
                     return None
@@ -113,7 +113,7 @@ class Link:
         except (socket.timeout, ConnectionRefusedError, OSError) as e:
             logger.info(f"got exception: {e!r}; starting server.")
 
-            if self.instance_cfg.get('ssl') and (ssl_ctx := self.get_ssl_server_context()) is None:
+            if self.using_ssl and (ssl_ctx := self.get_ssl_server_context()) is None:
                 return
 
             self.server = await asyncio.start_server(self.handle_connection, host=self.local_host, port=self.local_port, reuse_address=True, ssl=ssl_ctx)
@@ -132,8 +132,8 @@ class Link:
         logger.info(f"received connection: {(reader, writer)}")
         self.reader, self.writer = reader, writer
 
-        if self.ssl_config:
-            self.ssl_verify_hostname(writer.get_extra_info('peercert'), self.ssl_config.peer_hostname)
+        if self.using_ssl:
+            self.ssl_verify_hostname(writer.get_extra_info('peercert'), self.ssl_config.peer_hostname)  # type: ignore
 
         try:
             while True:
