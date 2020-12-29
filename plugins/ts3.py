@@ -32,7 +32,7 @@ class TS3Proto(Proto):
         await self.client.request('servernotifyregister event=textchannel')
         for chid in instance_cfg['notify_channels']:
             await self.client.request(f'servernotifyregister event=channel id={chid}')
-        asyncio.create_task(self.notify_waiter())
+        asyncio.create_task(self.notify_waiter(), name="ts3: notify")
 
     async def notify_waiter(self) -> None:
         while True:

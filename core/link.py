@@ -49,7 +49,7 @@ class Link:
             logger.error("unable to get ssl config, link failed.")
             return
 
-        asyncio.create_task(self.try_connect())
+        asyncio.create_task(self.try_connect(), name=f'link {self.name}: try_connect')
 
     def get_ssl_config(self) -> Optional[SSLConfig]:
         cert, key, peer_hostname = [self.instance_cfg.get(x) for x in ('ssl_cert', 'ssl_key', 'peer_hostname')]
@@ -131,6 +131,9 @@ class Link:
     async def handle_connection(self, reader: StreamReader, writer: StreamWriter) -> None:
         logger.info(f"received connection: {(reader, writer)}")
         self.reader, self.writer = reader, writer
+
+        # Mypy should ignore this because it can't know we're always in a task here.
+        asyncio.current_task().set_name(f"link {self.name}: connection")  # type: ignore
 
         if self.using_ssl:
             self.ssl_verify_hostname(writer.get_extra_info('peercert'), self.ssl_config.peer_hostname)  # type: ignore

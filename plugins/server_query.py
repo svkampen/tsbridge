@@ -50,8 +50,8 @@ class ServerQueryClient:
         self.request_queue: asyncio.Queue = asyncio.Queue()
         self.notify_queue: asyncio.Queue = asyncio.Queue()
 
-        self.task = asyncio.create_task(self.async_client())
-        self.ping_task = asyncio.create_task(self.ping())
+        self.task = asyncio.create_task(self.async_client(), name="sq: client")
+        self.ping_task = asyncio.create_task(self.ping(), name="sq: ping")
         self.loop = asyncio.get_event_loop()
         self.debug = True
 
@@ -116,11 +116,9 @@ class ServerQueryClient:
 
     async def handle_req_or_notify(self, req_aw: Optional[Task] = None, notify_aw: Optional[Task] = None) -> Tuple[Optional[Task], Optional[Task]]:
         if req_aw is None:
-            logger.debug('Starting new request queue task.')
-            req_aw = asyncio.create_task(self.request_queue.get())
+            req_aw = asyncio.create_task(self.request_queue.get(), name="sq: request queue waiter")
         if notify_aw is None:
-            logger.debug('Starting new notify (network readuntil) task.')
-            notify_aw = asyncio.create_task(self.readline())
+            notify_aw = asyncio.create_task(self.readline(), name="sq: network read waiter")
 
         done, pending = await asyncio.wait({req_aw, notify_aw},
                                            return_when=FIRST_COMPLETED)
