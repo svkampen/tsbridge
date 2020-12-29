@@ -5,7 +5,7 @@ from core.bridge import Bridge
 from typing import Mapping, Any, Optional, Dict, Tuple
 import asyncio
 import telethon
-from io import BytesIO
+from io import BytesIO, StringIO
 import logging
 import telethon
 
@@ -85,19 +85,32 @@ class TelegramProto(Proto):
 
         if event.text == '.online':
             return await self.send_user_request(event.chat_id)
+        if event.text == '.tasks':
+            return await self.send_debug_info(event.chat_id)
 
         message = Message(user=sender.first_name, text=text,
                           channel=event.chat_id, reply_to=reply_message,
                           reply_to_origin=reply_message_origin,
                           attachments=attachments)
 
-        if 'tasks' in event.raw_text:
-            # debugging level: 100%
-            pprint(asyncio.all_tasks())
-
         logger.info(f'Received message from Telegram: {message}')
 
         await self.out_port.put_message(message)
+
+    async def send_debug_info(self, to_chat: Channel) -> None:
+        tasks = asyncio.all_tasks()
+        output = ""
+        for n, task in enumerate(tasks):
+            buf = StringIO()
+            output += f"**Task {n}** (name: {task.get_name()}), stack:\n"
+            task.print_stack(file=buf)
+            buf.seek(0)
+            output += "```"
+            val = buf.getvalue()
+            val = val.split('\n', 1)[1]
+            output += val
+            output += "```\n"
+        await self.client.send_message(to_chat, message=output[:4000])
 
     async def handle_service_message(self, to_channel: Channel, message: ServiceMessage, meta: Metadata) -> None:
         to_channel = int(to_channel)
