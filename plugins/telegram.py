@@ -57,7 +57,13 @@ class TelegramProto(Proto):
 
         attachments = []
 
-        if event.photo is not None:
+        text = event.raw_text
+
+        if event.sticker is not None:
+            for attr in event.sticker.attributes:
+                if isinstance(attr, telethon.types.DocumentAttributeSticker):
+                    text = f'[ Sticker with emoji: {attr.alt} ]' if attr.alt else "[ Sticker without emoji >:( ]"
+        elif event.photo is not None:
             logger.info('Getting photo from TG message...')
             data = BytesIO()
             res = await event.download_media(file=data)
@@ -71,7 +77,7 @@ class TelegramProto(Proto):
         if event.text == '.online':
             return await self.send_user_request(event.chat_id)
 
-        message = Message(user=sender.first_name, text=event.raw_text,
+        message = Message(user=sender.first_name, text=text,
                           channel=event.chat_id, reply_to=reply_message,
                           reply_to_origin=reply_message_origin,
                           attachments=attachments)
