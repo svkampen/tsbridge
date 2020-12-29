@@ -20,6 +20,7 @@ class TelegramProto(Proto):
 
         self.bot_id = instance_cfg['bot_id']
         self.cfg = instance_cfg
+        self.paused = False
 
         logger.info('Started TG client.')
 
@@ -58,6 +59,14 @@ class TelegramProto(Proto):
         attachments = []
 
         text = event.raw_text
+        if text == '.unpause':
+            self.paused = False
+
+        if text == '.pause':
+            self.paused = True
+
+        if self.paused:
+            return
 
         if event.sticker is not None:
             for attr in event.sticker.attributes:
