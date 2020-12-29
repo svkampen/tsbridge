@@ -37,7 +37,7 @@ class PtyProto(Proto):
 
 
     def register_match_functions(self) -> None:
-        self._match_funcs: List[Callable[['PtyProto', str], Awaitable[None]]] = []
+        self._match_funcs: List[Callable[[str], Awaitable[None]]] = []
         for _, val in inspect.getmembers(self):
             if getattr(val, '_is_match_func', False):
                 self._match_funcs.append(val)
@@ -74,7 +74,7 @@ class PtyProto(Proto):
 
                 text = match.group(1)
                 for fn in self._match_funcs:
-                    await fn(self, text)
+                    await fn(text)
 
         asyncio.create_task(handle_matches(lines))
 
