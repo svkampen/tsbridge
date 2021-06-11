@@ -83,7 +83,10 @@ class ServerQueryClient:
                 result = fut.result()
                 new_fut.set_result(SQResult(result))
             except SQError as e:
-                new_fut.set_exception(e)
+                if (e.errno == 1541):
+                    new_fut.set_result(SQResult(''))
+                else:
+                    new_fut.set_exception(e)
         fut.add_done_callback(_callback)
         return new_fut
 
