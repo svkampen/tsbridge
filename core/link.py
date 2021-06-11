@@ -5,6 +5,7 @@ import core.types
 import core.bridge
 from core.types import Proto, Message, OutPort, Config, Channel, ServiceMessage, JoinMessage, PartMessage, Metadata, AnyMessage, Metadata
 from typing import Tuple, Optional, Dict
+import traceback
 import struct
 import pickle
 import logging
@@ -155,7 +156,7 @@ class Link:
                 self.writer.close()
                 await self.writer.wait_closed()
             except:
-                pass
+                traceback.print_exc()
             await asyncio.sleep(5)
             asyncio.create_task(self.start(self.bridge, self.instance_cfg))
 
