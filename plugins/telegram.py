@@ -49,6 +49,7 @@ class TelegramProto(Proto):
 
         return (message, self.cfg['name'])
 
+    @events.register(events.MessageEdited)
     @events.register(events.NewMessage)
     async def message_handler(self, event: events.NewMessage) -> None:
         sender: telethon.types.User = await event.get_sender()
