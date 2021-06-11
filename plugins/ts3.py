@@ -69,7 +69,7 @@ class TS3Proto(Proto):
         """ Handle a text notification """
         message = Message(user=data['invokername'], text=data['msg'], channel='46')
         if (message.user in self.blacklisted_users): return
-        if (message.text.startswith('!')): return
+        if (message.text.startswith('.')): return
 
         logger.info(f'Received message: {message}')
         if ('URL' in message.text):
