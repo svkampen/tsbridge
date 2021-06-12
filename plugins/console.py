@@ -14,7 +14,7 @@ class Console(Proto):
         loop.add_reader(sys.stdin, self.message_handler)
 
     def message_handler(self) -> None:
-        data = sys.stdin.readline()
+        data = sys.stdin.readline().strip()
         msg = Message(user="console", text=data, channel='console')
         asyncio.create_task(self.out_port.put_message(msg))
 
