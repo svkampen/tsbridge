@@ -5,6 +5,7 @@ import core.logging
 import core.link
 import sys
 import toml
+import itertools
 from typing import Dict, Type, Set, Callable, List, Awaitable
 from asyncio import CancelledError
 from core.types import Proto, Bus, AttachmentHost, ServiceMessage, Metadata
@@ -34,9 +35,10 @@ class Bridge:
             if hasattr(plugin, 'init'):
                 plugin.init(self)  # type: ignore
 
-        for (a, b) in self.config['routes']:
-            self.routes[a].add(b)
-            self.routes[b].add(a)
+        for l in self.config['routes']:
+            for x, y in itertools.product(l, l):
+                if x == y: continue
+                self.routes[x].add(y)
 
     def add_destructor(self, fn: Callable[[], Awaitable]) -> None:
         self.destructors.append(fn)
