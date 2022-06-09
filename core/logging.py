@@ -1,7 +1,7 @@
 import logging
 import coloredlogs
 
-FORMAT = "[%(asctime)s] [%(levelname)7s] %(name)7s: %(message)s"
+FORMAT = "[%(asctime)s] [%(levelname)8s] %(name)14s: %(message)s"
 
 def init(name: str = 'bridge', level: int = logging.INFO) -> None:
     fh = logging.FileHandler(f'{name}.log')
