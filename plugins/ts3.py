@@ -19,19 +19,25 @@ class TS3Proto(Proto):
 
         self.clid_users: Dict[int, str] = {}
         self.blacklisted_users = instance_cfg.get('blacklisted_users', [])
+        self.channel = instance_cfg['channel']
 
         assert sq_port is not None
 
         self.client = await ServerQueryClient.create(sq_user, sq_password, sq_host, int(sq_port))
         logger.info('Construction finished.')
         clients = await self.client.request('clientlist')
+        me = (await self.client.request('whoami')).kvs()['client_id']
+        try:
+            await self.client.request(f"clientmove clid={me} cid={self.channel}")
+        except SQError:
+            pass
+
         for client in map(SQResult.kvs, clients.split('|')):
             if client['client_type'] != '0': continue
             self.clid_users[int(client['clid'])] = client['client_nickname']
         logger.info(f"Current client list: {self.clid_users}")
         await self.client.request('servernotifyregister event=textchannel')
-        for chid in instance_cfg['notify_channels']:
-            await self.client.request(f'servernotifyregister event=channel id={chid}')
+        await self.client.request(f'servernotifyregister event=channel id={self.channel}')
         asyncio.create_task(self.notify_waiter(), name="ts3: notify")
 
     async def notify_waiter(self) -> None:
@@ -67,7 +73,7 @@ class TS3Proto(Proto):
 
     async def handle_notify_text(self, data: Dict) -> None:
         """ Handle a text notification """
-        message = Message(user=data['invokername'], text=data['msg'], channel='46')
+        message = Message(user=data['invokername'], text=data['msg'], channel=self.channel)
         if (message.user in self.blacklisted_users): return
         if (message.text.startswith('.')): return
 
@@ -114,7 +120,7 @@ class TS3Proto(Proto):
                 if val:
                     users[n] += " [mic muted]"
 
-            await self.out_port.put_message(UserList(users, 46))
+            await self.out_port.put_message(UserList(users, int(self.channel)))
 
 def init(bridge: Bridge) -> None:
     bridge.add_protocol('ts3-serverquery', TS3Proto)
