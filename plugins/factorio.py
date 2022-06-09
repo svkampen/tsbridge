@@ -27,25 +27,20 @@ class FactorioProto(PtyProto):
         self.logger = logging.getLogger('factorio')
         await super().start(bridge, out_port, instance_cfg)
 
-        self.online: Set[str] = set()
-
     @PtyProto.match(f"{date} \\[(LEAVE|JOIN)\\] ([A-z]+) (?:joined|left) the game")
     async def leave_join(self, line: str, groups: Groups) -> None:
         type, name = groups
         msg: ServiceMessage
         if (type == "JOIN"):
             msg = JoinMessage(name, CHANNEL_NAME)
-            self.online.add(name)
         else:
             msg = PartMessage(name, CHANNEL_NAME)
-            self.online.remove(name)
 
         await self.out_port.put_message(msg)
 
     @PtyProto.match(f"{date} \\[KICK\\] ([A-z]+) was kicked")
     async def kick(self, line: str, groups: Groups) -> None:
         await self.out_port.put_message(PartMessage(groups[0], CHANNEL_NAME))
-        self.online.remove(groups[0])
 
     @PtyProto.match(f"{date} \\[CHAT\\] ([A-z]+): (.*)")
     async def chat_message(self, line: str, groups: Groups) -> None:
@@ -63,11 +58,29 @@ class FactorioProto(PtyProto):
         self.pty.write((f'{output}\n').encode('utf-8'))
         self.pty.flush()
 
+    async def determine_users(self) -> None:
+        self.pty.write(b"/players\n")
+
+    @PtyProto.match(r"Players \((\d+)\):")
+    async def players_response(self, line: str, groups: Groups) -> None:
+        self.num_players_expected = int(groups[0])
+        self.num_players_got = 0
+        self.clients: Set[str] = set()
+
+    @PtyProto.match("^  ([A-z]+)( \\(online\\))?")
+    async def player_response(self, line: str, groups: Groups) -> None:
+        self.num_players_got += 1
+        if groups[1]:
+            self.clients.add(groups[0])
+
+        if self.num_players_got == self.num_players_expected:
+            ulist = UserList([*self.clients], CHANNEL_NAME)
+            await self.out_port.put_message(ulist)
+
     async def handle_service_message(self, to_channel: Channel, message: ServiceMessage, meta: Metadata) -> None:
         from_name = meta.from_instance.upper()
         if isinstance(message, UserRequest):
-            ul = UserList([*self.online], CHANNEL_NAME)
-            await self.out_port.put_message(ul)
+            await self.determine_users()
         if isinstance(message, JoinMessage):
             output = f'[{meta.from_instance.upper()}] {message.user} joined.'
             self.pty.write((f'{output}\n').encode('utf-8'))
