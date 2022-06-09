@@ -71,7 +71,7 @@ class Bridge:
 
     async def construct(self) -> None:
         self.loop = asyncio.get_event_loop()
-        for name, cfg in self.config['links'].items():
+        for name, cfg in self.config.get('links', {}).items():
             cfg['name'] = name
             link = Link()
             await link.start(self, cfg)
