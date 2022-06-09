@@ -130,6 +130,10 @@ class Link:
         return True
 
     async def handle_connection(self, reader: StreamReader, writer: StreamWriter) -> None:
+        if (self.reader is not None):
+            logger.warning("received connection, but we already have one? ignoring it.")
+            return
+
         logger.info(f"received connection: {(reader, writer)}")
         self.reader, self.writer = reader, writer
 
