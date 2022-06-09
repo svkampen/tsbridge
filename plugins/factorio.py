@@ -75,3 +75,6 @@ class FactorioProto(PtyProto):
             output = f'[{meta.from_instance.upper()}] {message.user} left.'
             self.pty.write((f'{output}\n').encode('utf-8'))
         self.pty.flush()
+
+def init(bridge: Bridge) -> None:
+    bridge.add_protocol('factorio', FactorioProto)
