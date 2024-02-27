@@ -1,5 +1,5 @@
-from core.types import Proto, OutPort, Message, Attachment, Channel, Config, Photo, Metadata
-from core.bridge import Bridge
+from ..core.types import Proto, OutPort, Message, Attachment, Channel, Config, Photo, Metadata
+from ..core.bridge import Bridge
 from typing import Mapping, Any, Dict, Tuple, List, Optional
 from dataclasses import dataclass
 import asyncio

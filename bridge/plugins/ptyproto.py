@@ -1,5 +1,5 @@
-from core.types import Proto, OutPort, Message, Config
-from core.bridge import Bridge
+from ..core.types import Proto, OutPort, Message, Config
+from ..core.bridge import Bridge
 from typing import Callable, Any, Dict, List, Awaitable
 import io
 import asyncio

@@ -1,15 +1,12 @@
+from . import plugins
 import asyncio
 import logging
-import core.plugins
-import core.logging
-import core.link
 import sys
-import toml
 import itertools
 from typing import Dict, Type, Set, Callable, List, Awaitable
 from asyncio import CancelledError
-from core.types import Proto, Bus, AttachmentHost, ServiceMessage, Metadata
-from core.link import Link
+from .types import Proto, Bus, AttachmentHost, ServiceMessage, Metadata
+from .link import Link
 from collections import defaultdict
 
 logger = logging.getLogger('bridge')
@@ -29,7 +26,7 @@ class Bridge:
         self.bus = Bus()
         self.config = config
 
-        plugin_loader = core.plugins.PluginLoader()
+        plugin_loader = plugins.PluginLoader()
         self.plugins = plugin_loader.load_all()
         for plugin in self.plugins:
             if hasattr(plugin, 'init'):
@@ -58,12 +55,7 @@ class Bridge:
             await self.run_loop()
         except CancelledError:
             await self.run_destructors()
-            self.dump_config()
             raise
-
-    def dump_config(self) -> None:
-        with open('config.toml', 'w') as f:
-            toml.dump(self.config, f)
 
     async def run_destructors(self) -> None:
         for destructor in self.destructors:

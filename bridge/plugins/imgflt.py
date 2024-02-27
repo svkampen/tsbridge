@@ -1,8 +1,8 @@
 import requests
 import aiohttp
 import logging
-import core.bridge
-from core.types import AttachmentHost
+from ..core.bridge import Bridge
+from ..core.types import AttachmentHost
 from typing import IO
 
 logger = logging.getLogger('imgf.lt')
@@ -22,7 +22,7 @@ class ImagefaultAttachmentHost(AttachmentHost):
         logger.info(f'Got url back: {url}')
         return url
 
-def init(bridge: 'core.bridge.Bridge') -> None:
+def init(bridge: Bridge) -> None:
     host = ImagefaultAttachmentHost()
     bridge.set_attachment_host(host)
     bridge.add_destructor(host.dispose)

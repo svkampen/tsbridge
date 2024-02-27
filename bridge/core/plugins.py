@@ -9,12 +9,15 @@ from types import ModuleType
 import importlib
 import re
 import logging
+import os
 
 logger = logging.getLogger("plugin-loader")
 DEPENDS_RE = re.compile(r"\* depends: (.+)")
 
 Plugin = str
 Dependency = str
+
+PLUGIN_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plugins'))
 
 class PluginLoader:
     """
@@ -23,9 +26,9 @@ class PluginLoader:
     Generates a dependency graph and returns a list of loaded modules when
     load_all() is called.
     """
-    def __init__(self, plugin_directory: str = "plugins", blacklist: List[Plugin] = None):
+    def __init__(self, plugin_directory: str = PLUGIN_DIR, blacklist: List[Plugin] = None):
         """ Initializes the PluginLoader by generating a dependency graph """
-        self.plugin_package = self.plugin_directory = plugin_directory
+        self.plugin_directory = plugin_directory
         self.graph: Dict[Path, List[Dependency]] = {}
         self.blacklist = set(blacklist or [])
 
@@ -61,12 +64,12 @@ class PluginLoader:
                 # Therefore, we act like it has no dependencies.
                 self.graph[path] = []
 
-    def load_plugin(self, plugin_path: Union[Path, str], name: str = None) -> ModuleType:
+    def load_plugin(self, plugin_path: Union[Path, str], name: str = None, package: str = 'bridge.core') -> ModuleType:
         if not name:
             assert isinstance(plugin_path, Path)
-            name = f"{self.plugin_package}." + plugin_path.stem
+            name = f"..plugins." + plugin_path.stem
 
-        plugin = importlib.import_module(name)
+        plugin = importlib.import_module(name, package)
         return plugin
 
     def check_impossible_loads(self) -> None:
@@ -81,7 +84,7 @@ class PluginLoader:
         self.check_impossible_loads()
 
         plugins = []
-        self.load_plugin('__init__.py', name='plugins')
+        self.load_plugin('__init__.py', name='..plugins')
         while (self.graph):
             satisfied_plugins = {plugin:deps for plugin,deps in self.graph.items()
                                  if not deps}

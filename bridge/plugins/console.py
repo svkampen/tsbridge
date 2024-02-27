@@ -1,8 +1,8 @@
 import asyncio
 import sys
 from typing import Any, Mapping
-from core.bridge import Bridge
-from core.types import OutPort, Channel, Message, Proto, Config, Metadata
+from ..core.bridge import Bridge
+from ..core.types import OutPort, Channel, Message, Proto, Config, Metadata
 
 class Console(Proto):
     async def send_message(self, to_channel: Channel, message: Message, meta: Metadata) -> None:

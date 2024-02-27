@@ -1,9 +1,7 @@
 """
 Inter-bridge links.
 """
-import core.types
-import core.bridge
-from core.types import Proto, Message, OutPort, Config, Channel, ServiceMessage, JoinMessage, PartMessage, Metadata, AnyMessage, Metadata
+from .types import Proto, Message, OutPort, Config, Channel, ServiceMessage, JoinMessage, PartMessage, Metadata, AnyMessage, Metadata
 from typing import Tuple, Optional, Dict
 import traceback
 import struct
@@ -27,7 +25,7 @@ class SSLConfig:
     peer_hostname: str # Hostname of the remote end of the link
 
 class Link:
-    async def start(self, bridge: 'core.bridge.Bridge', instance_cfg: Config) -> None:
+    async def start(self, bridge: '.bridge.Bridge', instance_cfg: Config) -> None:
         self.bridge = bridge
         self.instance_cfg = instance_cfg
         self.name = instance_cfg['name']

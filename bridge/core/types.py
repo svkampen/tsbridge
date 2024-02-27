@@ -98,10 +98,8 @@ class Proto(abc.ABC):
         pass
 
     @abc.abstractmethod
-    async def start(self, bridge: 'core.bridge.Bridge', out_port: OutPort, instance_cfg: Config) -> None:
+    async def start(self, bridge: '.bridge.Bridge', out_port: OutPort, instance_cfg: Config) -> None:
         pass
 
     async def handle_service_message(self, to_channel: Channel, message: ServiceMessage, meta: Metadata) -> None:
         pass
-
-import core.bridge

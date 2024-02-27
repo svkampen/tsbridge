@@ -1,7 +1,7 @@
-from core.types import Proto, Message, OutPort, Config, Channel, Photo, ServiceMessage, JoinMessage, PartMessage, UserRequest, UserList, Metadata
+from ..core.types import Proto, Message, OutPort, Config, Channel, Photo, ServiceMessage, JoinMessage, PartMessage, UserRequest, UserList, Metadata
 from typing import Any, Mapping, Dict
 from .server_query import ServerQueryClient, SQResult, SQError
-from core.bridge import Bridge
+from ..core.bridge import Bridge
 import requests
 import logging
 import asyncio
@@ -105,20 +105,34 @@ class TS3Proto(Proto):
                 raise
         await self.client.request(f'sendtextmessage targetmode=2 target={to_channel} msg={txt}')
 
+    async def get_client_stati(self):
+        clients = (await self.client.request('clientlist')).split('|')
+        details = []
+        for client in clients:
+            data = client.kvs()
+            clid = data['clid']
+            detail = (await self.client.request(f'clientinfo clid={clid}')).kvs()
+            detail['clid'] = clid
+            if detail['client_unique_identifier'] == 'serveradmin':
+                continue
+            details.append(detail)
+        return details
+
     async def handle_service_message(self, to_channel: Channel, message: ServiceMessage, meta: Metadata) -> None:
         if isinstance(message, UserRequest):
-            data = requests.get('https://ts.segfault.party/json').json()
-            users = data['people']
-            in_muted_q = data['input_muted']
-            out_muted_q = data['output_muted']
+            clients = await self.get_client_stati()
+            for client in clients:
+                for k in client.keys():
+                    client[k] = ServerQueryClient.unescape(client[k])
 
-            for n, val in enumerate(out_muted_q):
-                if val:
-                    users[n] += " [speakers muted]"
-
-            for n, val in enumerate(in_muted_q):
-                if val:
-                    users[n] += " [mic muted]"
+            users = []
+            for client in clients:
+                user = client['client_nickname']
+                if client['client_input_muted'] == '1':
+                    user += ' [mic muted]'
+                if client['client_output_muted'] == '1':
+                    user += ' [speakers muted]'
+                users.append(user)
 
             await self.out_port.put_message(UserList(users, int(self.channel)))
 
