@@ -133,7 +133,10 @@ class TelegramProto(Proto):
         logger.info(f'Sending message to channel {to_channel}: {message}')
         formatted = f'[{meta.from_instance.upper()}] {message.user}: {message.text}'.strip()
         to_channel = int(to_channel)
-        msg = await self.client.send_message(to_channel, message=formatted)
+        if 'DJ Smerlemex' in formatted:
+            msg = await self.client.send_message(to_channel, message=formatted, silent=True)
+        else:
+            msg = await self.client.send_message(to_channel, message=formatted)
         self.message_cache[msg.id] = (message, meta)
 
 def init(bridge: Bridge) -> None:
