@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # pre-commit script which runs mypy and (optionally) tests
 
 EXIT_CODE=0
@@ -18,7 +18,7 @@ fi
 git stash push -u -m 'Unstaged changes and untracked files' 2>&1 1>/dev/null
 git reset --soft HEAD^ 2>&1 1>/dev/null
 
-poetry run mypy bridge
+mypy bridge
 
 if [ $? -eq 1 ]
 then
