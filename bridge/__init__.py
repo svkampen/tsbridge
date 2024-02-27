@@ -36,7 +36,7 @@ def _main(args: Dict) -> None:
 
     run(bridge.start(), loop=asyncio.get_event_loop(), stop_on_unhandled_errors=True)
 
-def main():
+def main() -> None:
     _main(docopt(__doc__, help=True))
 
 if __name__ == '__main__':

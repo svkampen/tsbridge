@@ -2,7 +2,7 @@
 Inter-bridge links.
 """
 from .types import Proto, Message, OutPort, Config, Channel, ServiceMessage, JoinMessage, PartMessage, Metadata, AnyMessage, Metadata
-from typing import Tuple, Optional, Dict
+from typing import Tuple, Optional, Dict, TYPE_CHECKING
 import traceback
 import struct
 import pickle
@@ -13,6 +13,9 @@ from asyncio import StreamReader, StreamWriter
 import socket
 import ssl
 from dataclasses import dataclass
+
+if TYPE_CHECKING:
+    from .bridge import Bridge
 
 logger = logging.getLogger('link')
 
@@ -25,7 +28,7 @@ class SSLConfig:
     peer_hostname: str # Hostname of the remote end of the link
 
 class Link:
-    async def start(self, bridge: '.bridge.Bridge', instance_cfg: Config) -> None:
+    async def start(self, bridge: 'Bridge', instance_cfg: Config) -> None:
         self.bridge = bridge
         self.instance_cfg = instance_cfg
         self.name = instance_cfg['name']

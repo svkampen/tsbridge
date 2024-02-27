@@ -3,7 +3,7 @@ utils.plugins - Plugin loading functionality
 """
 
 from pathlib import Path
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Optional
 
 from types import ModuleType
 import importlib
@@ -26,7 +26,7 @@ class PluginLoader:
     Generates a dependency graph and returns a list of loaded modules when
     load_all() is called.
     """
-    def __init__(self, plugin_directory: str = PLUGIN_DIR, blacklist: List[Plugin] = None):
+    def __init__(self, plugin_directory: str = PLUGIN_DIR, blacklist: Optional[List[Plugin]] = None):
         """ Initializes the PluginLoader by generating a dependency graph """
         self.plugin_directory = plugin_directory
         self.graph: Dict[Path, List[Dependency]] = {}
@@ -64,7 +64,7 @@ class PluginLoader:
                 # Therefore, we act like it has no dependencies.
                 self.graph[path] = []
 
-    def load_plugin(self, plugin_path: Union[Path, str], name: str = None, package: str = 'bridge.core') -> ModuleType:
+    def load_plugin(self, plugin_path: Union[Path, str], name: Optional[str] = None, package: str = 'bridge.core') -> ModuleType:
         if not name:
             assert isinstance(plugin_path, Path)
             name = f"..plugins." + plugin_path.stem

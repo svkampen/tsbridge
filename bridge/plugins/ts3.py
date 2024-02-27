@@ -1,5 +1,5 @@
 from ..core.types import Proto, Message, OutPort, Config, Channel, Photo, ServiceMessage, JoinMessage, PartMessage, UserRequest, UserList, Metadata
-from typing import Any, Mapping, Dict
+from typing import Any, Mapping, Dict, List
 from .server_query import ServerQueryClient, SQResult, SQError
 from ..core.bridge import Bridge
 import requests
@@ -105,7 +105,7 @@ class TS3Proto(Proto):
                 raise
         await self.client.request(f'sendtextmessage targetmode=2 target={to_channel} msg={txt}')
 
-    async def get_client_stati(self):
+    async def get_client_stati(self) -> List[Dict[str, str]]:
         clients = (await self.client.request('clientlist')).split('|')
         details = []
         for client in clients:

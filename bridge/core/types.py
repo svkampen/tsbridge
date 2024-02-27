@@ -2,8 +2,11 @@
 import abc
 import asyncio
 from dataclasses import dataclass, field
-from typing import IO, Sequence, List, Mapping, Any, Union, Iterable, Tuple, Dict, Optional
+from typing import IO, Sequence, List, Mapping, Any, Union, Iterable, Tuple, Dict, Optional, TYPE_CHECKING
 from io import BytesIO
+
+if TYPE_CHECKING:
+    from .bridge import Bridge
 
 Channel = Union[str, int]
 User = str
@@ -98,7 +101,7 @@ class Proto(abc.ABC):
         pass
 
     @abc.abstractmethod
-    async def start(self, bridge: '.bridge.Bridge', out_port: OutPort, instance_cfg: Config) -> None:
+    async def start(self, bridge: 'Bridge', out_port: OutPort, instance_cfg: Config) -> None:
         pass
 
     async def handle_service_message(self, to_channel: Channel, message: ServiceMessage, meta: Metadata) -> None:

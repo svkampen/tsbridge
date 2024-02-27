@@ -17,6 +17,11 @@ requests = "^2.31.0"
 [tool.poetry.scripts]
 bridge = "bridge:main"
 
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.8.0"
+types-docopt = "^0.6.11.4"
+types-requests = "^2.31.0.20240218"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

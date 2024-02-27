@@ -3,7 +3,7 @@
 """
 from ..core.types import Proto, OutPort, Message, Attachment, Channel, Config, Photo, JoinMessage, PartMessage, ServiceMessage, UserRequest, UserList, Metadata, MiscServiceMessage
 from ..core.bridge import Bridge
-from typing import Mapping, Any, Callable, Coroutine, Sequence, List, Dict, Optional
+from typing import Mapping, Any, Callable, Coroutine, Sequence, List, Dict, Optional, Awaitable
 import logging
 import json
 import inspect
@@ -24,8 +24,10 @@ DEATH_MESSAGES = '(?:' + '|'.join("was shot by;was pummeled by;was pricked to de
 
 Groups = Sequence[str]
 
-def match(regex: str) -> Callable:
-    def decorator(fn: Callable) -> Callable:
+MatchFn = Callable[..., Awaitable[Any]]
+
+def match(regex: str) -> Callable[..., MatchFn]:
+    def decorator(fn: MatchFn) -> MatchFn:
         @functools.wraps(fn)
         async def wrapper(self: 'MinecraftProto', line: str) -> None:
             re_match = re.match(regex, line)
@@ -47,11 +49,11 @@ class MinecraftProto(Proto):
         self.img_host = bridge.get_attachment_host()
         self.out_port = out_port
         asyncio.get_event_loop().add_reader(self.pty, self.handle_recv)
-        self.match_funcs = []
+        self.match_funcs: List[MatchFn] = []
         self.user_map: Dict[str, str] = self.config['user_map']
         for _, fn in inspect.getmembers(self, predicate=callable):
             if hasattr(fn, '_is_match'):
-                self.match_funcs.append(fn)
+                self.match_funcs.append(fn)  # type: ignore
 
         self.buffer = ""
 
