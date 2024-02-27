@@ -8,6 +8,7 @@ from typing import Tuple, Optional, Dict
 import traceback
 import struct
 import pickle
+from pickle import UnpicklingError
 import logging
 import asyncio
 from asyncio import StreamReader, StreamWriter
@@ -151,7 +152,7 @@ class Link:
                 meta, message = pickle.loads(await self.reader.readexactly(size))
                 meta.from_link = self.name
                 await self.bridge.bus.queue.put((meta, message))
-        except (asyncio.IncompleteReadError, ConnectionResetError) as e:
+        except (asyncio.IncompleteReadError, ConnectionResetError, EOFError, UnpicklingError) as e:
             logger.warn(f"got exception trying to read: {e!r}; trying to restart link.")
             try:
                 if hasattr(self, 'server'):
