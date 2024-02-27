@@ -9,16 +9,22 @@
     };
   };
 
-  output = { self, nixpkgs, flake-utils, poetry2nix }:
+  outputs = { self, nixpkgs, flake-utils, poetry2nix }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        inherit (poetry2nix.lib.mkPoetry2Nix { inherit pkgs; }) mkPoetryApplication defaultPoetryOverrides;
+        p2nix = poetry2nix.lib.mkPoetry2Nix { inherit pkgs; };
       in
       {
         packages = {
-          bridge = mkPoetryApplication {
+          bridge = p2nix.mkPoetryApplication {
             projectDir = ./.;
+            overrides = p2nix.overrides.withDefaults
+              (self: super: {
+                mypy = super.mypy.override { preferWheel = true; };
+                types-docopt = super.types-docopt.overridePythonAttrs
+                  (old: { buildInputs = (old.buildInputs or []) ++ [super.setuptools]; });
+              });
           };
 
           default = self.packages.${system}.bridge;
@@ -32,6 +38,7 @@
       nixosModules.default = { config, lib, ... }:
       with lib;
       let
+        pkgs = nixpkgs.legacyPackages."x86_64-linux";
         cfg = config.svkmpn.services.bridge;
         confFile = pkgs.writeText "bridge.toml" ''
           ${cfg.conf}
@@ -57,23 +64,24 @@
         };
 
         config = mkIf cfg.enable {
+          users.groups.${cfg.user} = {};
           users.users.${cfg.user} = {
             createHome = true;
             description = "bridge bot";
             isSystemUser = true;
-            group = ${cfg.user};
-            home = ${cfg.dataDir};
+            group = "${cfg.user}";
+            home = "${cfg.dataDir}";
           };
 
           systemd.services."svkmpn.bridge" = {
             wantedBy = [ "multi-user.target" ];
             after = [ "network.target" ];
-            serviceConfig = let pkg = self.packages.${system}.default; in
+            serviceConfig = let pkg = self.packages."x86_64-linux".default; in
             {
-              ExecStart = "${pkg}/bin/bridge";
-              User = ${cfg.user};
-              Group = ${cfg.user};
-              WorkingDirectory = ${cfg.dataDir};
+              ExecStart = "${pkg}/bin/bridge -c ${confFile}";
+              User = "${cfg.user}";
+              Group = "${cfg.user}";
+              WorkingDirectory = "${cfg.dataDir}";
             };
           };
         };
