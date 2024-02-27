@@ -2,6 +2,7 @@ from ..core.types import Proto, Message, OutPort, Config, Channel, Photo, Servic
 from typing import Any, Mapping, Dict, List
 from .server_query import ServerQueryClient, SQResult, SQError
 from ..core.bridge import Bridge
+from ..core.utils import load_cfg_value
 import requests
 import logging
 import asyncio
@@ -16,6 +17,8 @@ class TS3Proto(Proto):
         self.out_port = out_port
         self.img_host = bridge.get_attachment_host()
         sq_user, sq_password, sq_host, sq_port = map(instance_cfg.get, ['sq_user', 'sq_password', 'sq_host', 'sq_port'])
+
+        sq_password = load_cfg_value(sq_password)  # type: ignore
 
         self.clid_users: Dict[int, str] = {}
         self.blacklisted_users = instance_cfg.get('blacklisted_users', [])

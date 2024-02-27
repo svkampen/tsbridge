@@ -2,6 +2,7 @@ from telethon import TelegramClient, events
 from pprint import pprint
 from ..core.types import Proto, OutPort, Message, Attachment, Channel, Config, Photo, JoinMessage, PartMessage, ServiceMessage, UserRequest, UserList, Metadata, MiscServiceMessage, AnyMessage
 from ..core.bridge import Bridge
+from ..core.utils import load_cfg_value
 from typing import Mapping, Any, Optional, Dict, Tuple
 import asyncio
 import telethon
@@ -13,10 +14,13 @@ logger = logging.getLogger('telegram')
 
 class TelegramProto(Proto):
     async def start(self, bridge: Bridge, out_port: OutPort, instance_cfg: Config) -> None:
-        self.client = TelegramClient('bot', instance_cfg['api_id'],
-                                            instance_cfg['api_hash'])
+        api_id = load_cfg_value(instance_cfg['api_id'])
+        api_hash = load_cfg_value(instance_cfg['api_hash'])
+        bot_token = load_cfg_value(instance_cfg['bot_token'])
 
-        await self.client.start(bot_token=instance_cfg['bot_token'])
+        self.client = TelegramClient('bot', api_id, api_hash)
+
+        await self.client.start(bot_token=bot_token)
 
         self.bot_id = instance_cfg['bot_id']
         self.cfg = instance_cfg
