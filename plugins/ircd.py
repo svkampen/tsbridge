@@ -68,12 +68,14 @@ class IRCDProto(Proto):
         self.users[b.uid] = b
 
     async def write(self, data: str) -> None:
-        logger.info(f"<<< {data}")
+        logger.debug(f"<<< {data!r}")
         self.writer.write((data + '\r\n').encode('utf-8'))
         await self.writer.drain()
 
     async def readline(self) -> str:
-        return (await self.reader.readline()).decode('utf-8')
+        line = (await self.reader.readline()).decode('utf-8')
+        logger.debug(f">>> {line!r}")
+        return line
 
     def parse(self, msg: str) -> Tuple[str, str, List[str]]:
         tr_start = msg.find(' :') + 1
@@ -138,7 +140,6 @@ class IRCDProto(Proto):
 
         while (line := await self.readline()):
             line = line.strip()
-            logger.info(f">>> {line}")
             host, method, args = self.parse(line)
             if (method == 'PING'):
                 await self.write(f"PONG :{args[-1]}")
@@ -152,7 +153,7 @@ class IRCDProto(Proto):
         return ''.join(c for c in s if c in (string.ascii_letters + string.digits + '_'))
 
     async def send_message(self, to_channel: Channel, message: Message, meta: Metadata) -> None:
-        nick = f"{meta.from_instance}_{self.nick_filter(message.user)}"
+        nick = f"{meta.from_instance}-{self.nick_filter(message.user)}"
         user = self.find_user(nick) or await self.add_user(nick)
 
         await self.write(f":{user.uid} PRIVMSG #bridge :{message.text}")
