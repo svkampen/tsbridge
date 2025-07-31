@@ -130,7 +130,7 @@ class MinecraftProto(Proto):
         fmt: List[Dict[str, Any]] = [{'text': f'[{from_instance}] ', 'color': 'blue'}]
 
         for attachment in message.attachments:
-            if isinstance(attachment, Photo):
+            if isinstance(attachment, Photo) and self.img_host:
                 url = await self.img_host.put(attachment.get()) if handle_attachments else ''
                 fmt.append({'text': '[IMG] ', 'color': 'gold', 'clickEvent': {'action': 'open_url', 'value': url}})
 

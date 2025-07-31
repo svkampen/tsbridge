@@ -3,7 +3,7 @@ import asyncio
 import logging
 import sys
 import itertools
-from typing import Dict, Type, Set, Callable, List, Awaitable
+from typing import Dict, Type, Set, Callable, List, Awaitable, Optional
 from asyncio import CancelledError
 from .types import Proto, Bus, AttachmentHost, ServiceMessage, Metadata
 from .link import Link
@@ -16,6 +16,7 @@ class Bridge:
     instances: Dict[str, Proto]
     routes: Dict[str, Set[str]]
     destructors: List[Callable[[], Awaitable]]
+    attachment_host: Optional[AttachmentHost]
 
     def __init__(self, config: Dict) -> None:
         self.protocols = {}
@@ -25,6 +26,7 @@ class Bridge:
         self.routes = defaultdict(set)
         self.bus = Bus()
         self.config = config
+        self.attachment_host = None
 
         plugin_loader = plugins.PluginLoader()
         self.plugins = plugin_loader.load_all()
@@ -46,7 +48,7 @@ class Bridge:
     def set_attachment_host(self, host: AttachmentHost) -> None:
         self.attachment_host = host
 
-    def get_attachment_host(self) -> AttachmentHost:
+    def get_attachment_host(self) -> Optional[AttachmentHost]:
         return self.attachment_host
 
     async def start(self) -> None:

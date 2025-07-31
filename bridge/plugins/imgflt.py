@@ -1,3 +1,4 @@
+# * noload
 import requests
 import aiohttp
 import logging

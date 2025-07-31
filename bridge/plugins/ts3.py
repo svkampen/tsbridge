@@ -95,7 +95,7 @@ class TS3Proto(Proto):
 
         txt = message.text
         for attachment in message.attachments:
-            if isinstance(attachment, Photo):
+            if isinstance(attachment, Photo) and self.img_host:
                 url = await self.img_host.put(attachment.get())
                 txt += f" [ Contains photo: {url} ]"
 
