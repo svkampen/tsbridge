@@ -54,6 +54,7 @@ class PluginLoader:
                 if '* noload' in line:
                     logger.info(f"Not loading plugin {path.stem} "
                                  "due to noload directive")
+                    self.blacklist.add(path.stem)
                     return
 
                 match = DEPENDS_RE.search(line)
