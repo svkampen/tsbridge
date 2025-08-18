@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-tsbridge = "tsbridge:main"
+bridge = "bridge:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -29,3 +29,6 @@ dev = [
     "types-docopt>=0.6.11.20241107",
     "types-requests>=2.32.4.20250809",
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bridge"]

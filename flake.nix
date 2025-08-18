@@ -122,7 +122,7 @@
             after = [ "network.target" ];
             serviceConfig = let pkg = self.packages."x86_64-linux".default; in
             {
-              ExecStart = "${pkg}/bin/tsbridge -c ${confFile}";
+              ExecStart = "${pkg}/bin/bridge -c ${confFile}";
               User = "${cfg.user}";
               Group = "${cfg.user}";
               WorkingDirectory = "${cfg.dataDir}";
