@@ -34,11 +34,25 @@
           sourcePreference = "wheel";
         };
 
+        pyprojectOverrides = final: prev: {
+          pyaes = prev.pyaes.overrideAttrs (old: {
+            nativeBuildInputs = old.nativeBuildInputs ++ [
+              (final.resolveBuildSystem { setuptools = []; })
+            ];
+          });
+          docopt = prev.docopt.overrideAttrs (old: {
+            nativeBuildInputs = old.nativeBuildInputs ++ [
+              (final.resolveBuildSystem { setuptools = []; })
+            ];
+          });
+        };
+
         python = pkgs.python312;
         pythonSet = (pkgs.callPackage pyproject-nix.build.packages { inherit python; }).overrideScope(
           lib.composeManyExtensions [
             pyproject-build-systems.overlays.default
             overlay
+            pyprojectOverrides
           ]);
       in
       {
@@ -57,7 +71,7 @@
             // lib.optionalAttrs pkgs.stdenv.isLinux {
               # Python libraries often load native shared objects using dlopen(3).
               # Setting LD_LIBRARY_PATH makes the dynamic library loader aware of libraries without using RPATH for lookup.
-              LD_LIBRARY_PATH = lib.makeLibraryPath pkgs.pythonManylinuxPackages.manylinux1;
+              # LD_LIBRARY_PATH = lib.makeLibraryPath pkgs.pythonManylinuxPackages.manylinux1;
             };
           shellHook = ''
             unset PYTHONPATH
