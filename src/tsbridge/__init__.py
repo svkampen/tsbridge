@@ -1,4 +1,3 @@
-#!/usr/bin/env python3.7
 """
 Bridge between different chat protocols (chiefly Telegram and Teamspeak).
 
@@ -13,8 +12,8 @@ Options:
 from aiorun import run
 import asyncio
 from docopt import docopt
-from .core.bridge import Bridge
 from . import core
+from .core.bridge import Bridge
 import tomllib
 import os
 import logging

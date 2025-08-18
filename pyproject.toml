@@ -1,27 +1,31 @@
-[tool.poetry]
-name = "bridge"
+[project]
+name = "tsbridge"
 version = "0.1.0"
-description = ""
-authors = ["Sam van Kampen <sam@tehsvk.net>"]
+description = "Add your description here"
 readme = "README.md"
+authors = [
+    { name = "Sam van Kampen", email = "sam@tehsvk.net" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "aiohttp>=3.12.15",
+    "aiorun>=2025.1.1",
+    "coloredlogs>=15.0.1",
+    "docopt>=0.6.2",
+    "requests>=2.32.4",
+    "telethon<=1.16.2",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-docopt = "^0.6.2"
-aiohttp = "^3.9.3"
-Telethon = "1.16.2"
-aiorun = "^2023.7.2"
-coloredlogs = "^15.0.1"
-requests = "^2.31.0"
-
-[tool.poetry.scripts]
-bridge = "bridge:main"
-
-[tool.poetry.group.dev.dependencies]
-mypy = "^1.8.0"
-types-docopt = "^0.6.11.4"
-types-requests = "^2.31.0.20240218"
+[project.scripts]
+tsbridge = "tsbridge:main"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.17.1",
+    "types-docopt>=0.6.11.20241107",
+    "types-requests>=2.32.4.20250809",
+]

@@ -1,37 +1,67 @@
 {
   description = "Message bridge between different IM services";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     flake-utils.url = "github:numtide/flake-utils";
-    poetry2nix = {
-      url = "github:nix-community/poetry2nix";
+
+    pyproject-nix = {
+      url = "github:pyproject-nix/pyproject.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    uv2nix = {
+      url = "github:pyproject-nix/uv2nix";
+      inputs.pyproject-nix.follows = "pyproject-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    pyproject-build-systems = {
+      url = "github:pyproject-nix/build-system-pkgs";
+      inputs.pyproject-nix.follows = "pyproject-nix";
+      inputs.uv2nix.follows = "uv2nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, nixpkgs, flake-utils, poetry2nix }:
+  outputs = { self, nixpkgs, flake-utils, uv2nix, pyproject-nix, pyproject-build-systems }:
     flake-utils.lib.eachDefaultSystem (system:
       let
+        inherit (nixpkgs) lib;
         pkgs = nixpkgs.legacyPackages.${system};
-        p2nix = poetry2nix.lib.mkPoetry2Nix { inherit pkgs; };
-      in
-      {
-        packages = {
-          bridge = p2nix.mkPoetryApplication {
-            projectDir = ./.;
-            overrides = p2nix.overrides.withDefaults
-              (self: super: {
-                mypy = super.mypy.override { preferWheel = true; };
-                types-docopt = super.types-docopt.overridePythonAttrs
-                  (old: { buildInputs = (old.buildInputs or []) ++ [super.setuptools]; });
-              });
-          };
 
-          default = self.packages.${system}.bridge;
+        workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./.; };
+        overlay = workspace.mkPyprojectOverlay {
+          sourcePreference = "wheel";
         };
 
+        python = pkgs.python312;
+        pythonSet = (pkgs.callPackage pyproject-nix.build.packages { inherit python; }).overrideScope(
+          lib.composeManyExtensions [
+            pyproject-build-systems.overlays.default
+            overlay
+          ]);
+      in
+      {
+        packages.bridge = pythonSet.mkVirtualEnv "bridge-env" workspace.deps.default;
+        packages.default = self.packages.${system}.bridge;
+
         devShells.default = pkgs.mkShell {
-          inputsFrom = [ self.packages.${system}.bridge ];
+          packages = [ pkgs.uv python ];
+          env =
+            {
+              # Prevent uv from managing Python downloads
+              UV_PYTHON_DOWNLOADS = "never";
+              # Force uv to use nixpkgs Python interpreter
+              UV_PYTHON = python.interpreter;
+            }
+            // lib.optionalAttrs pkgs.stdenv.isLinux {
+              # Python libraries often load native shared objects using dlopen(3).
+              # Setting LD_LIBRARY_PATH makes the dynamic library loader aware of libraries without using RPATH for lookup.
+              LD_LIBRARY_PATH = lib.makeLibraryPath pkgs.pythonManylinuxPackages.manylinux1;
+            };
+          shellHook = ''
+            unset PYTHONPATH
+          '';
         };
       }
     ) // {
@@ -78,7 +108,7 @@
             after = [ "network.target" ];
             serviceConfig = let pkg = self.packages."x86_64-linux".default; in
             {
-              ExecStart = "${pkg}/bin/bridge -c ${confFile}";
+              ExecStart = "${pkg}/bin/tsbridge -c ${confFile}";
               User = "${cfg.user}";
               Group = "${cfg.user}";
               WorkingDirectory = "${cfg.dataDir}";
