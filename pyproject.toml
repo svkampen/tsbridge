@@ -12,6 +12,7 @@ dependencies = [
     "aiorun>=2025.1.1",
     "coloredlogs>=15.0.1",
     "docopt>=0.6.2",
+    "protobuf>=6.32.0",
     "requests>=2.32.4",
     "telethon<=1.16.2",
 ]
