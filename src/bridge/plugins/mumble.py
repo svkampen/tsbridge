@@ -119,6 +119,8 @@ class MumbleMsg:
                 val = mumble_proto.ServerConfig()
             case MumbleType.SuggestConfig:
                 val = mumble_proto.SuggestConfig()
+            case MumbleType.UDPTunnel:
+                pass # voice data, we don't care about it
             case _:
                 logger.warning(f"Unhandled MumbleType: {mumble_type!r}")
                 mumble_type = MumbleType.Unhandled
