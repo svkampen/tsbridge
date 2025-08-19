@@ -202,7 +202,8 @@ class MumbleProto(Proto):
             buf = await self.reader.readexactly(length)
             msg = MumbleMsg.from_typed_buf(mumble_type, buf)
 
-            logger.info(f"Received message: {msg!r}")
+            if mumble_type != MumbleType.UDPTunnel:
+               logger.info(f"Received message: {msg!r}")
 
             match msg.mumble_type:
                 case MumbleType.UserState:
