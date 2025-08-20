@@ -286,6 +286,8 @@ class MumbleProto(Proto):
                 if user.deaf:
                     fmt += " [speakers muted]"
 
+                users.append(fmt)
+
             await self.out_port.put_message(UserList(users, 0))
 
 
