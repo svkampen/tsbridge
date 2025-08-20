@@ -120,7 +120,7 @@ class MumbleMsg:
             case MumbleType.SuggestConfig:
                 val = mumble_proto.SuggestConfig()
             case MumbleType.UDPTunnel:
-                pass # voice data, we don't care about it
+                pass  # voice data, we don't care about it
             case _:
                 logger.warning(f"Unhandled MumbleType: {mumble_type!r}")
                 mumble_type = MumbleType.Unhandled
@@ -186,7 +186,8 @@ class MumbleProto(Proto):
             except TimeoutError:
                 msg = MumbleMsg(MumbleType.Ping, mumble_proto.Ping())
 
-            logger.info(f"Sending message: {msg!r}")
+            if msg.mumble_type != MumbleType.Ping:
+                logger.info(f"Sending message: {msg!r}")
 
             tag = msg.mumble_type
             data = msg.value.SerializeToString()
@@ -203,14 +204,23 @@ class MumbleProto(Proto):
             msg = MumbleMsg.from_typed_buf(mumble_type, buf)
 
             if mumble_type not in (MumbleType.UDPTunnel, MumbleType.Ping):
-               logger.info(f"Received message: {msg!r}")
+                logger.info(f"Received message: {msg!r}")
 
             match msg.mumble_type:
                 case MumbleType.UserState:
                     ustate: mumble_proto.UserState = msg.value
-                    self.user_map[ustate.session] = ustate.name
-                    if ustate.name == self.username:
-                        self.session_id = ustate.session
+                    if ustate.HasField("name"):
+                        if ustate.session not in self.user_map:
+                            await self.out_port.put_message(JoinMessage(ustate.name, 0))
+                        self.user_map[ustate.session] = ustate.name
+                        if ustate.name == self.username:
+                            self.session_id = ustate.session
+                case MumbleType.UserRemove:
+                    uremove: mumble_proto.UserRemove = msg.value
+                    name = self.user_map.get(uremove.session)
+                    if name:
+                        await self.out_port.put_message(PartMessage(name, 0))
+                        del self.user_map[uremove.session]
                 case MumbleType.TextMessage:
                     text_msg: mumble_proto.TextMessage = msg.value
                     message = Message(
