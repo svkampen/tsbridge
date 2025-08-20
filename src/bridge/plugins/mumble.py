@@ -60,6 +60,13 @@ class MumbleType(Enum):
     Unhandled = 26
 
 
+@dataclass
+class MumbleUser:
+    name: str
+    mute: bool
+    deaf: bool
+
+
 class MumbleMsg:
     def __init__(self, mumble_type: MumbleType, value: Any):
         self.mumble_type = mumble_type
@@ -138,12 +145,12 @@ class MumbleProto(Proto):
     async def start(
         self, bridge: Bridge, out_port: OutPort, instance_cfg: Config
     ) -> None:
-        self.out_port = out_port
-        self.host = instance_cfg["host"]
-        self.port = instance_cfg["port"]
-        self.ssl_cert = instance_cfg["ssl_cert"]
-        self.ssl_key = instance_cfg["ssl_key"]
-        self.username = instance_cfg["username"]
+        self.out_port: OutPort = out_port
+        self.host: str = instance_cfg["host"]
+        self.port: int = instance_cfg["port"]
+        self.ssl_cert: str = instance_cfg["ssl_cert"]
+        self.ssl_key: str = instance_cfg["ssl_key"]
+        self.username: str = instance_cfg["username"]
 
         self.ssl_ctx = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
         self.ssl_ctx.load_cert_chain(self.ssl_cert, self.ssl_key)
@@ -158,7 +165,7 @@ class MumbleProto(Proto):
         self.read_handle = asyncio.create_task(self.read_task(), name="mumble: read")
         self.send_handle = asyncio.create_task(self.send_task(), name="mumble: send")
 
-        self.user_map: Dict[int, str] = {}
+        self.user_map: Dict[int, MumbleUser] = {}
         self.session_id = 0
 
         # whether we are still in the process of connecting.
@@ -219,22 +226,33 @@ class MumbleProto(Proto):
                     self.connecting = False
                 case MumbleType.UserState:
                     ustate: mumble_proto.UserState = msg.value
+                    user = self.user_map.get(
+                        ustate.session, MumbleUser(name="", mute=False, deaf=False)
+                    )
+                    if ustate.session not in self.user_map and not self.connecting:
+                        assert ustate.HasField("name")
+                        await self.out_port.put_message(JoinMessage(ustate.name, 0))
+
                     if ustate.HasField("name"):
-                        if ustate.session not in self.user_map and not self.connecting:
-                            await self.out_port.put_message(JoinMessage(ustate.name, 0))
-                        self.user_map[ustate.session] = ustate.name
+                        user.name = ustate.name
                         if ustate.name == self.username:
                             self.session_id = ustate.session
+                    if ustate.HasField("self_mute"):
+                        user.mute = ustate.self_mute
+                    if ustate.HasField("self_deaf"):
+                        user.deaf = ustate.self_deaf
+
+                    self.user_map[ustate.session] = user
                 case MumbleType.UserRemove:
                     uremove: mumble_proto.UserRemove = msg.value
-                    name = self.user_map.get(uremove.session)
-                    if name:
-                        await self.out_port.put_message(PartMessage(name, 0))
+                    user = self.user_map.get(uremove.session)
+                    if user:
+                        await self.out_port.put_message(PartMessage(user.name, 0))
                         del self.user_map[uremove.session]
                 case MumbleType.TextMessage:
                     text_msg: mumble_proto.TextMessage = msg.value
                     message = Message(
-                        user=self.user_map[text_msg.actor],
+                        user=self.user_map[text_msg.actor].name,
                         text=text_msg.message,
                         channel=0,
                     )
@@ -256,8 +274,19 @@ class MumbleProto(Proto):
 
     async def handle_service_message(
         self, to_channel: Channel, message: ServiceMessage, meta: Metadata
-    ):
-        pass
+    ) -> None:
+        if isinstance(message, UserRequest):
+            users = []
+            for user in self.user_map.values():
+                if user.name == self.username:
+                    continue
+                fmt = user.name
+                if user.mute:
+                    fmt += " [mic muted]"
+                if user.deaf:
+                    fmt += " [speakers muted]"
+
+            await self.out_port.put_message(UserList(users, 0))
 
 
 def init(bridge: Bridge) -> None:
