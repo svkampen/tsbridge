@@ -161,6 +161,13 @@ class MumbleProto(Proto):
         self.user_map: Dict[int, str] = {}
         self.session_id = 0
 
+        # whether we are still in the process of connecting.
+        # this influences whether to send join messages for UserState updates-
+        # when we join, we get a flurry of UserStates for the currently connected
+        # users, and we shouldn't treat these as if people have just joined.
+        # after we have received ServerSync, we can be sure we're done connecting.
+        self.connecting = True
+
         await self.send_version()
         await self.send_auth()
 
@@ -207,10 +214,13 @@ class MumbleProto(Proto):
                 logger.info(f"Received message: {msg!r}")
 
             match msg.mumble_type:
+                case MumbleType.ServerSync:
+                    # done connecting
+                    self.connecting = False
                 case MumbleType.UserState:
                     ustate: mumble_proto.UserState = msg.value
                     if ustate.HasField("name"):
-                        if ustate.session not in self.user_map:
+                        if ustate.session not in self.user_map and not self.connecting:
                             await self.out_port.put_message(JoinMessage(ustate.name, 0))
                         self.user_map[ustate.session] = ustate.name
                         if ustate.name == self.username:
