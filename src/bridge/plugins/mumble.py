@@ -162,11 +162,17 @@ class MumbleProto(Proto):
             self.host, self.port, ssl=self.ssl_ctx
         )
 
+        self.running = True
+        self.restarting = asyncio.Event()
+
         self.send_queue: asyncio.Queue = asyncio.Queue()
         self.recv_queue: asyncio.Queue = asyncio.Queue()
 
         self.read_handle = asyncio.create_task(self.read_task(), name="mumble: read")
         self.send_handle = asyncio.create_task(self.send_task(), name="mumble: send")
+        self.restart_handle = asyncio.create_task(
+            self.restart_task(), name="mumble: restart"
+        )
 
         self.user_map: Dict[int, MumbleUser] = {}
         self.session_id = 0
@@ -196,7 +202,7 @@ class MumbleProto(Proto):
         await self.send_queue.put(MumbleMsg(MumbleType.Authenticate, auth))
 
     async def send_task(self) -> None:
-        while True:
+        while self.running:
             try:
                 async with asyncio.timeout(15):
                     msg = await self.send_queue.get()
@@ -208,17 +214,25 @@ class MumbleProto(Proto):
 
             tag = msg.mumble_type
             data = msg.value.SerializeToString()
-            self.writer.write(struct.pack("!HI", tag.value, len(data)))
-            self.writer.write(data)
-            await self.writer.drain()
+            try:
+                self.writer.write(struct.pack("!HI", tag.value, len(data)))
+                self.writer.write(data)
+                await self.writer.drain()
+            except:
+                self.restarting.set()
+                return
 
     async def read_task(self) -> None:
-        while True:
-            raw_ty = await self.reader.readexactly(2)
-            mumble_type = MumbleType(struct.unpack("!H", raw_ty)[0])
-            length = struct.unpack("!I", await self.reader.readexactly(4))[0]
-            buf = await self.reader.readexactly(length)
-            msg = MumbleMsg.from_typed_buf(mumble_type, buf)
+        while self.running:
+            try:
+                raw_ty = await self.reader.readexactly(2)
+                mumble_type = MumbleType(struct.unpack("!H", raw_ty)[0])
+                length = struct.unpack("!I", await self.reader.readexactly(4))[0]
+                buf = await self.reader.readexactly(length)
+                msg = MumbleMsg.from_typed_buf(mumble_type, buf)
+            except:
+                self.restarting.set()
+                return
 
             if mumble_type not in (MumbleType.UDPTunnel, MumbleType.Ping):
                 logger.info(f"Received message: {msg!r}")
@@ -229,8 +243,8 @@ class MumbleProto(Proto):
                     self.connecting = False
                 case MumbleType.UserState:
                     ustate: mumble_proto.UserState = msg.value
-                    user = self.user_map.get(
-                        ustate.session, MumbleUser(name="", mute=False, deaf=False)
+                    user = self.user_map.get(ustate.session) or MumbleUser(
+                        name="", mute=False, deaf=False
                     )
                     if ustate.session not in self.user_map and not self.connecting:
                         assert ustate.HasField("name")
@@ -263,6 +277,14 @@ class MumbleProto(Proto):
                     await self.out_port.put_message(message)
                 case _:
                     pass
+
+    async def restart_task(self) -> None:
+        await self.restarting.wait()
+        logger.warning("Restart event tripped!")
+        self.running = False
+        await self.send_handle
+        await self.read_handle
+        asyncio.create_task(self.connect())
 
     async def send_message(
         self, to_channel: Channel, message: Message, meta: Metadata
