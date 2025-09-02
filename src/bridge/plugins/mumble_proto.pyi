@@ -73,7 +73,6 @@ class Reject(_message.Message):
     __slots__ = ("type", "reason")
     class RejectType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
         __slots__ = ()
-        None: _ClassVar[Reject.RejectType]
         WrongVersion: _ClassVar[Reject.RejectType]
         InvalidUsername: _ClassVar[Reject.RejectType]
         WrongUserPW: _ClassVar[Reject.RejectType]
@@ -82,7 +81,6 @@ class Reject(_message.Message):
         ServerFull: _ClassVar[Reject.RejectType]
         NoCertificate: _ClassVar[Reject.RejectType]
         AuthenticatorFail: _ClassVar[Reject.RejectType]
-    None: Reject.RejectType
     WrongVersion: Reject.RejectType
     InvalidUsername: Reject.RejectType
     WrongUserPW: Reject.RejectType

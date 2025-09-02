@@ -92,6 +92,7 @@ class Link:
         assert self.ssl_config
 
         ssl_ctx = ssl.create_default_context(purpose=purpose)
+        ssl_ctx.check_hostname = True
         ssl_ctx.verify_mode = ssl.VerifyMode.CERT_REQUIRED
         try:
             ssl_ctx.load_cert_chain(self.ssl_config.cert, self.ssl_config.key)
@@ -154,7 +155,9 @@ class Link:
     ) -> Success:
         """Verify that the hostname of our SSL peer is what we expect."""
         try:
-            ssl.match_hostname(peer_certificate, expected_hostname)
+            # match_hostname was deprecated in Python 3.7
+            if hasattr(ssl, "match_hostname"):
+                ssl.match_hostname(peer_certificate, expected_hostname)  # type: ignore
         except ssl.CertificateError as e:
             logger.error(f"ssl: hostname verification failed: {e}")
             return False

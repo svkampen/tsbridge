@@ -18,7 +18,7 @@ fi
 git stash push -u -m 'Unstaged changes and untracked files' 2>&1 1>/dev/null
 git reset --soft HEAD^ 2>&1 1>/dev/null
 
-mypy bridge
+uv run mypy src/bridge
 
 if [ $? -eq 1 ]
 then

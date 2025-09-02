@@ -73,8 +73,8 @@ class MumbleMsg:
         self.value = value
 
     @staticmethod
-    def from_typed_buf(mumble_type: MumbleType, buf: bytes):
-        val = None
+    def from_typed_buf(mumble_type: MumbleType, buf: bytes) -> "MumbleMsg":
+        val: Any = None
         match mumble_type:
             case MumbleType.Version:
                 val = mumble_proto.Version()
@@ -137,7 +137,7 @@ class MumbleMsg:
 
         return MumbleMsg(mumble_type, val)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"MumbleMsg({self.mumble_type}, {self.value})"
 
 
@@ -155,12 +155,15 @@ class MumbleProto(Proto):
         self.ssl_ctx = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
         self.ssl_ctx.load_cert_chain(self.ssl_cert, self.ssl_key)
 
+        await self.connect()
+
+    async def connect(self) -> None:
         self.reader, self.writer = await asyncio.open_connection(
             self.host, self.port, ssl=self.ssl_ctx
         )
 
-        self.send_queue = asyncio.Queue()
-        self.recv_queue = asyncio.Queue()
+        self.send_queue: asyncio.Queue = asyncio.Queue()
+        self.recv_queue: asyncio.Queue = asyncio.Queue()
 
         self.read_handle = asyncio.create_task(self.read_task(), name="mumble: read")
         self.send_handle = asyncio.create_task(self.send_task(), name="mumble: send")
@@ -178,21 +181,21 @@ class MumbleProto(Proto):
         await self.send_version()
         await self.send_auth()
 
-    async def send_version(self):
+    async def send_version(self) -> None:
         ver = mumble_proto.Version()
         ver.release = "TSBridge"
         ver.os = "Linux"
         ver.version_v2 = 0x0001000400000000
         await self.send_queue.put(MumbleMsg(MumbleType.Version, ver))
 
-    async def send_auth(self):
+    async def send_auth(self) -> None:
         auth = mumble_proto.Authenticate()
         auth.client_type = 1
         auth.opus = True
         auth.username = self.username
         await self.send_queue.put(MumbleMsg(MumbleType.Authenticate, auth))
 
-    async def send_task(self):
+    async def send_task(self) -> None:
         while True:
             try:
                 async with asyncio.timeout(15):
@@ -209,7 +212,7 @@ class MumbleProto(Proto):
             self.writer.write(data)
             await self.writer.drain()
 
-    async def read_task(self):
+    async def read_task(self) -> None:
         while True:
             raw_ty = await self.reader.readexactly(2)
             mumble_type = MumbleType(struct.unpack("!H", raw_ty)[0])
@@ -245,9 +248,9 @@ class MumbleProto(Proto):
                     self.user_map[ustate.session] = user
                 case MumbleType.UserRemove:
                     uremove: mumble_proto.UserRemove = msg.value
-                    user = self.user_map.get(uremove.session)
-                    if user:
-                        await self.out_port.put_message(PartMessage(user.name, 0))
+                    del_user = self.user_map.get(uremove.session)
+                    if del_user:
+                        await self.out_port.put_message(PartMessage(del_user.name, 0))
                         del self.user_map[uremove.session]
                 case MumbleType.TextMessage:
                     text_msg: mumble_proto.TextMessage = msg.value
@@ -261,7 +264,9 @@ class MumbleProto(Proto):
                 case _:
                     pass
 
-    async def send_message(self, to_channel: Channel, message: Message, meta: Metadata):
+    async def send_message(
+        self, to_channel: Channel, message: Message, meta: Metadata
+    ) -> None:
         text_msg = mumble_proto.TextMessage()
         text_msg.actor = self.session_id
         text_msg.channel_id.append(0)
