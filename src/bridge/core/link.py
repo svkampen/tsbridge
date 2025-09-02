@@ -2,20 +2,8 @@
 Inter-bridge links.
 """
 
-from .types import (
-    Proto,
-    Message,
-    OutPort,
-    Config,
-    Channel,
-    ServiceMessage,
-    JoinMessage,
-    PartMessage,
-    Metadata,
-    AnyMessage,
-    Metadata,
-)
-from typing import Tuple, Optional, Dict, TYPE_CHECKING
+from .types import Config, Metadata, AnyMessage, Metadata
+from typing import Optional, Dict, TYPE_CHECKING
 import traceback
 import struct
 import pickle

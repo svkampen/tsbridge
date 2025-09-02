@@ -1,6 +1,6 @@
-from ..core.types import Proto, OutPort, Message, Config
+from ..core.types import *
 from ..core.bridge import Bridge
-from typing import Callable, Any, Dict, List, Awaitable
+from typing import Callable, Any, List, Awaitable
 import io
 import asyncio
 import re
@@ -21,6 +21,7 @@ class PtyProto(Proto):
     and extract the text to match on later in the first group. By default, this simply
     matches anything.
     """
+
     SERVER_MESSAGE_RE = "(.+)"
 
     @staticmethod
@@ -31,25 +32,27 @@ class PtyProto(Proto):
                 re_match = re.match(regex, line)
                 if re_match:
                     await fn(self, line, re_match.groups())
-            setattr(wrapper, '_is_match_func', True)
-            return wrapper
-        return decorator
 
+            setattr(wrapper, "_is_match_func", True)
+            return wrapper
+
+        return decorator
 
     def register_match_functions(self) -> None:
         self._match_funcs: List[Callable[[str], Awaitable[None]]] = []
         for _, val in inspect.getmembers(self):
-            if getattr(val, '_is_match_func', False):
+            if getattr(val, "_is_match_func", False):
                 self._match_funcs.append(val)
 
-
-    async def start(self, bridge: Bridge, out_port: OutPort, instance_cfg: Config) -> None:
-        if not hasattr(self, 'logger'):
+    async def start(
+        self, bridge: Bridge, out_port: OutPort, instance_cfg: Config
+    ) -> None:
+        if not hasattr(self, "logger"):
             # derived classes can define their own logger earlier
-            self.logger = logging.getLogger('ptyproto')
+            self.logger = logging.getLogger("ptyproto")
 
         self.config: Config = instance_cfg
-        self.pty = io.FileIO(instance_cfg['pty_file'], 'r+')
+        self.pty = io.FileIO(instance_cfg["pty_file"], "r+")
         asyncio.get_event_loop().add_reader(self.pty, self.handle_recv)
 
         self.out_port = out_port
@@ -58,10 +61,10 @@ class PtyProto(Proto):
     def handle_recv(self) -> None:
         # mypy will complain, but read should never return None here
         # as we've just been informed data /is/ available.
-        data = self.pty.read(8192).decode('utf-8')  # type: ignore
+        data = self.pty.read(8192).decode("utf-8")  # type: ignore
         self._buffer += data
 
-        *lines, self._buffer = self._buffer.split('\n')
+        *lines, self._buffer = self._buffer.split("\n")
 
         async def handle_matches(lines: List[str]) -> None:
             for line in lines:
@@ -77,4 +80,3 @@ class PtyProto(Proto):
                     await fn(text)
 
         asyncio.create_task(handle_matches(lines))
-

@@ -1,23 +1,6 @@
-from ..core.types import (
-    Proto,
-    OutPort,
-    Message,
-    Attachment,
-    Channel,
-    Config,
-    Photo,
-    JoinMessage,
-    PartMessage,
-    ServiceMessage,
-    UserRequest,
-    UserList,
-    Metadata,
-    MiscServiceMessage,
-    AnyMessage,
-)
+from ..core.types import *
 from ..core.bridge import Bridge
-from ..core.utils import load_cfg_value
-from typing import Mapping, Any, Optional, Dict, Tuple
+from typing import Any, Dict
 import asyncio
 import logging
 import struct
@@ -25,7 +8,6 @@ from enum import Enum
 from . import mumble_proto
 from dataclasses import dataclass
 import ssl
-import socket
 
 logger = logging.getLogger("mumble")
 

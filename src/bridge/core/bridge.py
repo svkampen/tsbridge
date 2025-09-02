@@ -9,7 +9,9 @@ from .types import Proto, Bus, AttachmentHost, ServiceMessage, Metadata
 from .link import Link
 from collections import defaultdict
 
-logger = logging.getLogger('bridge')
+
+logger = logging.getLogger("bridge")
+
 
 class Bridge:
     protocols: Dict[str, Type[Proto]]
@@ -31,12 +33,13 @@ class Bridge:
         plugin_loader = plugins.PluginLoader()
         self.plugins = plugin_loader.load_all()
         for plugin in self.plugins:
-            if hasattr(plugin, 'init'):
+            if hasattr(plugin, "init"):
                 plugin.init(self)  # type: ignore
 
-        for l in self.config['routes']:
+        for l in self.config["routes"]:
             for x, y in itertools.product(l, l):
-                if x == y: continue
+                if x == y:
+                    continue
                 self.routes[x].add(y)
 
     def add_destructor(self, fn: Callable[[], Awaitable]) -> None:
@@ -65,21 +68,21 @@ class Bridge:
 
     async def construct(self) -> None:
         self.loop = asyncio.get_event_loop()
-        for name, cfg in self.config.get('links', {}).items():
-            cfg['name'] = name
+        for name, cfg in self.config.get("links", {}).items():
+            cfg["name"] = name
             link = Link()
             await link.start(self, cfg)
             self.links.append(link)
 
-        for name, cfg in self.config['instances'].items():
-            cfg['name'] = name
+        for name, cfg in self.config["instances"].items():
+            cfg["name"] = name
             try:
-                proto = self.protocols[cfg['proto']]
+                proto = self.protocols[cfg["proto"]]
             except KeyError:
                 logger.error(f'Unknown protocol: {cfg["proto"]}')
                 sys.exit()
 
-            logger.info(f'Constructing instance: {name}')
+            logger.info(f"Constructing instance: {name}")
 
             proto_inst = proto()
             await proto_inst.start(self, self.bus.port_for(name), cfg)
@@ -88,19 +91,23 @@ class Bridge:
     async def run_loop(self) -> None:
         while True:
             meta, message = await self.bus.get_message()
-            logger.info(f'Got message on bus from {meta.from_instance}: {message}')
+            logger.info(f"Got message on bus from {meta.from_instance}: {message}")
 
             inst = meta.from_instance
 
             for link in self.links:
-                if link.name == meta.from_link: continue
+                if link.name == meta.from_link:
+                    continue
                 await link.send_message(meta, message)
 
-            for dest in self.routes[f'{inst}#{message.channel}']:
-                inst, to_channel = dest.split('#')
+            for dest in self.routes[f"{inst}#{message.channel}"]:
+                inst, to_channel = dest.split("#")
                 if inst in self.instances:
                     if isinstance(message, ServiceMessage):
-                        await self.instances[inst].handle_service_message(to_channel, message, meta)
+                        await self.instances[inst].handle_service_message(
+                            to_channel, message, meta
+                        )
                     else:
-                        await self.instances[inst].send_message(to_channel, message, meta)
-
+                        await self.instances[inst].send_message(
+                            to_channel, message, meta
+                        )

@@ -1,8 +1,9 @@
-""" Defines Abstract Base Classes for use in the bridge. """
+"""Defines Abstract Base Classes for use in the bridge."""
+
 import abc
 import asyncio
 from dataclasses import dataclass, field
-from typing import IO, Sequence, List, Mapping, Any, Union, Iterable, Tuple, Dict, Optional, TYPE_CHECKING
+from typing import IO, Sequence, List, Any, Union, Tuple, Dict, Optional, TYPE_CHECKING
 from io import BytesIO
 
 if TYPE_CHECKING:
@@ -12,10 +13,12 @@ Channel = Union[str, int]
 User = str
 Config = Dict[str, Any]
 
+
 class Attachment(abc.ABC):
     @abc.abstractmethod
     def get(self) -> IO:
         pass
+
 
 class Photo(Attachment):
     def __init__(self, data: BytesIO):
@@ -24,60 +27,73 @@ class Photo(Attachment):
     def get(self) -> IO:
         return self.data
 
+
 class AttachmentHost(abc.ABC):
     @abc.abstractmethod
     async def put(self, data: IO) -> str:
-        """ Put given data on a server and return a link to it. """
+        """Put given data on a server and return a link to it."""
         pass
+
 
 @dataclass
 class Message:
-    """ A message sent in a given channel, optionally as a reply to another and optionally containing attachments. """
+    """A message sent in a given channel, optionally as a reply to another and optionally containing attachments."""
+
     user: User
     text: str
     channel: Channel
-    reply_to: Optional['AnyMessage'] = field(default=None)
+    reply_to: Optional["AnyMessage"] = field(default=None)
     reply_to_origin: Optional[str] = field(default=None)
     attachments: Sequence[Attachment] = field(default_factory=list)
+
 
 class ServiceMessage:
     channel: Channel
 
+
 AnyMessage = Union[Message, ServiceMessage]
+
 
 @dataclass
 class MiscServiceMessage(ServiceMessage):
     text: str
     channel: Channel
 
+
 @dataclass
 class JoinMessage(ServiceMessage):
     user: User
     channel: Channel
 
+
 @dataclass
 class UserRequest(ServiceMessage):
     channel: Channel
+
 
 @dataclass
 class UserList(ServiceMessage):
     users: List[User]
     channel: Channel
 
+
 @dataclass
 class PartMessage(ServiceMessage):
     user: User
     channel: Channel
+
 
 class OutPort(abc.ABC):
     @abc.abstractmethod
     async def put_message(self, message: AnyMessage) -> None:
         pass
 
+
 @dataclass
 class Metadata:
     from_link: str
     from_instance: str
+
 
 class Bus:
     queue: asyncio.Queue
@@ -87,22 +103,29 @@ class Bus:
 
     def port_for(self, instance_name: str) -> OutPort:
         async def put_message(_: OutPort, message: AnyMessage) -> None:
-            meta = Metadata(from_link='local', from_instance=instance_name)
+            meta = Metadata(from_link="local", from_instance=instance_name)
             await self.queue.put((meta, message))
 
-        return type('outport', (OutPort,), {'put_message': put_message})()
+        return type("outport", (OutPort,), {"put_message": put_message})()
 
     async def get_message(self) -> Tuple[Metadata, AnyMessage]:
         return await self.queue.get()
 
+
 class Proto(abc.ABC):
     @abc.abstractmethod
-    async def send_message(self, to_channel: Channel, message: Message, meta: Metadata) -> None:
+    async def send_message(
+        self, to_channel: Channel, message: Message, meta: Metadata
+    ) -> None:
         pass
 
     @abc.abstractmethod
-    async def start(self, bridge: 'Bridge', out_port: OutPort, instance_cfg: Config) -> None:
+    async def start(
+        self, bridge: "Bridge", out_port: OutPort, instance_cfg: Config
+    ) -> None:
         pass
 
-    async def handle_service_message(self, to_channel: Channel, message: ServiceMessage, meta: Metadata) -> None:
+    async def handle_service_message(
+        self, to_channel: Channel, message: ServiceMessage, meta: Metadata
+    ) -> None:
         pass
