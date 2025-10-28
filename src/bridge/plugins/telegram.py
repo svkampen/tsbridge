@@ -10,8 +10,12 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.types import Message as TGMessage
+import html
+import functools
 
 logger = logging.getLogger("telegram")
+
+_esc = functools.partial(html.escape, quote=False)
 
 
 class TelegramProto(Proto):
@@ -22,7 +26,7 @@ class TelegramProto(Proto):
 
         self.dispatcher = Dispatcher()
         self.bot = Bot(
-            bot_token, default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2)
+            bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML)
         )
 
         self.bot_id = instance_cfg["bot_id"]
@@ -100,14 +104,14 @@ class TelegramProto(Proto):
         output = ""
         for n, task in enumerate(tasks):
             buf = StringIO()
-            output += f"**Task {n}** (name: {task.get_name()}), stack:\n"
+            output += f"<b>Task {n}</b> (name: {_esc(task.get_name())}), stack:\n"
             task.print_stack(file=buf)
             buf.seek(0)
-            output += "```"
+            output += "<code>"
             val = buf.getvalue()
             val = val.split("\n", 1)[1]
-            output += val
-            output += "```\n"
+            output += _esc(val)
+            output += "</code>\n"
         await self.bot.send_message(chat_id=to_chat, text=output[:4000])
 
     async def _handle_service_message(
@@ -118,12 +122,12 @@ class TelegramProto(Proto):
         if isinstance(message, JoinMessage):
             msg = await self.bot.send_message(
                 chat_id=to_channel,
-                text=f"[{meta.from_instance.upper()}] {message.user} joined.",
+                text=_esc(f"[{meta.from_instance.upper()}] {message.user} joined."),
             )
         elif isinstance(message, PartMessage):
             msg = await self.bot.send_message(
                 chat_id=to_channel,
-                text=f"[{meta.from_instance.upper()}] {message.user} left.",
+                text=_esc(f"[{meta.from_instance.upper()}] {message.user} left."),
                 disable_notification=True,
             )
         elif isinstance(message, UserList):
@@ -133,10 +137,11 @@ class TelegramProto(Proto):
                 else "Users:\n%s" % ("\n".join(message.users))
             )
             msg = await self.bot.send_message(
-                to_channel, text=f"[{meta.from_instance.upper()}] {ulist}."
+                to_channel,
+                text=_esc(f"[{meta.from_instance.upper()}] {ulist}."),
             )
         elif isinstance(message, MiscServiceMessage):
-            msg = await self.bot.send_message(to_channel, text=message.text)
+            msg = await self.bot.send_message(to_channel, text=_esc(message.text))
 
         if msg:
             self.message_cache[msg.message_id] = (message, meta)
@@ -145,7 +150,7 @@ class TelegramProto(Proto):
         self, to_channel: Channel, message: Message, meta: Metadata
     ) -> None:
         logger.info(f"Sending message to channel {to_channel}: {message}")
-        formatted = (
+        formatted = _esc(
             f"[{meta.from_instance.upper()}] {message.user}: {message.text}".strip()
         )
         to_channel = int(to_channel)
