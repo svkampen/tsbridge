@@ -2,20 +2,7 @@
 * after: imgflt
 """
 
-from ..core.types import (
-    Proto,
-    Message,
-    OutPort,
-    Config,
-    Channel,
-    Photo,
-    ServiceMessage,
-    JoinMessage,
-    PartMessage,
-    UserRequest,
-    UserList,
-    Metadata,
-)
+from ..core.types import *
 from typing import Any, Mapping, Dict, List
 from .server_query import ServerQueryClient, SQResult, SQError
 from ..core.bridge import Bridge
@@ -69,6 +56,8 @@ class TS3Proto(Proto):
             f"servernotifyregister event=channel id={self.channel}"
         )
         asyncio.create_task(self.notify_waiter(), name="ts3: notify")
+
+        await self.message_loop()
 
     async def notify_waiter(self) -> None:
         while True:
@@ -124,7 +113,7 @@ class TS3Proto(Proto):
         message = message.replace(r"\/", "/")
         return message
 
-    async def send_message(
+    async def _handle_message(
         self, to_channel: Channel, message: Message, meta: Metadata
     ) -> None:
         logger.info(f"Got message to send to TS3: {message} (to channel: {to_channel})")
@@ -161,7 +150,7 @@ class TS3Proto(Proto):
             details.append(detail)
         return details
 
-    async def handle_service_message(
+    async def _handle_service_message(
         self, to_channel: Channel, message: ServiceMessage, meta: Metadata
     ) -> None:
         if isinstance(message, UserRequest):

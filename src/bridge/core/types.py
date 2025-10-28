@@ -2,16 +2,17 @@
 
 import abc
 import asyncio
+import io
 from dataclasses import dataclass, field
-from typing import IO, Sequence, List, Any, Union, Tuple, Dict, Optional, TYPE_CHECKING
-from io import BytesIO
+from typing import IO, BinaryIO, Sequence, Any, Union, Optional, TYPE_CHECKING
+from collections.abc import Awaitable
 
 if TYPE_CHECKING:
     from .bridge import Bridge
 
 Channel = Union[str, int]
 User = str
-Config = Dict[str, Any]
+Config = dict[str, Any]
 
 
 class Attachment(abc.ABC):
@@ -21,7 +22,7 @@ class Attachment(abc.ABC):
 
 
 class Photo(Attachment):
-    def __init__(self, data: BytesIO):
+    def __init__(self, data: BinaryIO):
         self.data = data
 
     def get(self) -> IO:
@@ -73,7 +74,7 @@ class UserRequest(ServiceMessage):
 
 @dataclass
 class UserList(ServiceMessage):
-    users: List[User]
+    users: list[User]
     channel: Channel
 
 
@@ -96,7 +97,7 @@ class Metadata:
 
 
 class Bus:
-    queue: asyncio.Queue
+    queue: asyncio.Queue[tuple[Metadata, AnyMessage]]
 
     def __init__(self) -> None:
         self.queue = asyncio.Queue()
@@ -108,16 +109,12 @@ class Bus:
 
         return type("outport", (OutPort,), {"put_message": put_message})()
 
-    async def get_message(self) -> Tuple[Metadata, AnyMessage]:
+    async def get_message(self) -> tuple[Metadata, AnyMessage]:
         return await self.queue.get()
 
 
 class Proto(abc.ABC):
-    @abc.abstractmethod
-    async def send_message(
-        self, to_channel: Channel, message: Message, meta: Metadata
-    ) -> None:
-        pass
+    in_queue: asyncio.Queue[tuple[Channel, AnyMessage, Metadata]]
 
     @abc.abstractmethod
     async def start(
@@ -125,7 +122,21 @@ class Proto(abc.ABC):
     ) -> None:
         pass
 
-    async def handle_service_message(
+    @abc.abstractmethod
+    async def _handle_message(
+        self, to_channel: Channel, message: Message, meta: Metadata
+    ) -> None:
+        pass
+
+    async def _handle_service_message(
         self, to_channel: Channel, message: ServiceMessage, meta: Metadata
     ) -> None:
         pass
+
+    async def message_loop(self) -> None:
+        while True:
+            (chan, msg, meta) = await self.in_queue.get()
+            if isinstance(msg, ServiceMessage):
+                await self._handle_service_message(chan, msg, meta)
+            else:
+                await self._handle_message(chan, msg, meta)

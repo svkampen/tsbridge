@@ -35,6 +35,8 @@ class TelegramProto(Proto):
 
         self.message_cache: Dict[int, Tuple[AnyMessage, Metadata]] = {}
 
+        await self.message_loop()
+
     async def send_user_request(self, from_channel: Channel) -> None:
         await self.out_port.put_message(UserRequest(from_channel))
 
@@ -133,7 +135,7 @@ class TelegramProto(Proto):
             output += "```\n"
         await self.client.send_message(to_chat, message=output[:4000])
 
-    async def handle_service_message(
+    async def _handle_service_message(
         self, to_channel: Channel, message: ServiceMessage, meta: Metadata
     ) -> None:
         to_channel = int(to_channel)
@@ -164,7 +166,7 @@ class TelegramProto(Proto):
         if msg:
             self.message_cache[msg.id] = (message, meta)
 
-    async def send_message(
+    async def _handle_message(
         self, to_channel: Channel, message: Message, meta: Metadata
     ) -> None:
         logger.info(f"Sending message to channel {to_channel}: {message}")

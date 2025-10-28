@@ -25,7 +25,6 @@ class OpenTTDProto(PtyProto):
     ) -> None:
         self.logger = logging.getLogger("openttd")
         self.register_match_functions()
-        await super().start(bridge, out_port, instance_cfg)
 
         self.img_host = bridge.get_attachment_host()
 
@@ -37,6 +36,8 @@ class OpenTTDProto(PtyProto):
 
         # Temporary list of client data received from the `clients` command.
         self.clients: List[str] = []
+
+        await super().start(bridge, out_port, instance_cfg)
 
     @PtyProto.match(f"\\[All\\] ([^:]+): (.+)")
     async def message(self, line: str, groups: Groups) -> None:
@@ -78,7 +79,7 @@ class OpenTTDProto(PtyProto):
             msg = PartMessage(name, CHANNEL_NAME)
         await self.out_port.put_message(msg)
 
-    async def send_message(
+    async def _handle_message(
         self, to_channel: Channel, message: Message, meta: Metadata
     ) -> None:
         self.logger.info(f"Got message to send: {message}")
@@ -95,7 +96,7 @@ class OpenTTDProto(PtyProto):
         self.pty.write((f'say "{output}"\n').encode("utf-8"))
         self.pty.flush()
 
-    async def handle_service_message(
+    async def _handle_service_message(
         self, to_channel: Channel, message: ServiceMessage, meta: Metadata
     ) -> None:
         from_name = meta.from_instance.upper()

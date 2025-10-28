@@ -1,3 +1,4 @@
+from ..core import utils
 from ..core.types import *
 from ..core.bridge import Bridge
 from typing import Any, Tuple, List, Optional
@@ -83,13 +84,17 @@ class IRCDProto(Proto):
         self.reader, self.writer = await asyncio.open_connection(
             self.host, self.port, ssl=True
         )
-        asyncio.create_task(self.client_loop())
 
         self.uf = IRCUserFactory(self.cfg["sid"])
         self.users = {}
 
         b = self.uf.user("Bridge")
         self.users[b.uid] = b
+
+        client_task = asyncio.create_task(self.client_loop())
+        message_task = asyncio.create_task(self.message_loop())
+
+        await utils.wait_reraise({client_task, message_task})
 
     async def write(self, data: str) -> None:
         logger.debug(f"<<< {data!r}")
@@ -188,7 +193,7 @@ class IRCDProto(Proto):
             c for c in s if c in (string.ascii_letters + string.digits + "_")
         )
 
-    async def send_message(
+    async def _handle_message(
         self, to_channel: Channel, message: Message, meta: Metadata
     ) -> None:
         nick = f"{meta.from_instance}-{self.nick_filter(message.user)}"

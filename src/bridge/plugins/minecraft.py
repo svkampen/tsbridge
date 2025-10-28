@@ -73,6 +73,8 @@ class MinecraftProto(Proto):
 
         self.buffer = ""
 
+        await self.message_loop()
+
     def handle_recv(self) -> None:
         # mypy will complain, but read should never return None here
         # as we've just been informed data /is/ available.
@@ -179,7 +181,7 @@ class MinecraftProto(Proto):
         fmt.append({"text": f"{message.user}: {message.text}", "color": "white"})
         return fmt
 
-    async def send_message(
+    async def _handle_message(
         self, to_channel: Channel, message: Message, meta: Metadata
     ) -> None:
         logger.info(f"Got message to send: {message}")
@@ -190,7 +192,7 @@ class MinecraftProto(Proto):
         self.pty.write(("tellraw @a " + json.dumps(fmt) + "\n").encode("utf-8"))
         self.pty.flush()
 
-    async def handle_service_message(
+    async def _handle_service_message(
         self, to_channel: Channel, message: ServiceMessage, meta: Metadata
     ) -> None:
         from_name = meta.from_instance.upper()

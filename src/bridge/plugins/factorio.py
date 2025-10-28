@@ -48,7 +48,7 @@ class FactorioProto(PtyProto):
         msg = Message(user, message, CHANNEL_NAME)
         await self.out_port.put_message(msg)
 
-    async def send_message(
+    async def _handle_message(
         self, to_channel: Channel, message: Message, meta: Metadata
     ) -> None:
         self.logger.info(f"Got message to send: {message}")
@@ -81,7 +81,7 @@ class FactorioProto(PtyProto):
             ulist = UserList([*self.clients], CHANNEL_NAME)
             await self.out_port.put_message(ulist)
 
-    async def handle_service_message(
+    async def _handle_service_message(
         self, to_channel: Channel, message: ServiceMessage, meta: Metadata
     ) -> None:
         from_name = meta.from_instance.upper()

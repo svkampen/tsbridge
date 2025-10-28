@@ -138,6 +138,7 @@ class MumbleProto(Proto):
         self.ssl_ctx.load_cert_chain(self.ssl_cert, self.ssl_key)
 
         await self.connect()
+        await self.message_loop()
 
     async def connect(self) -> None:
         self.reader, self.writer = await asyncio.open_connection(
@@ -268,7 +269,7 @@ class MumbleProto(Proto):
         await self.read_handle
         asyncio.create_task(self.connect())
 
-    async def send_message(
+    async def _handle_message(
         self, to_channel: Channel, message: Message, meta: Metadata
     ) -> None:
         text_msg = mumble_proto.TextMessage()
@@ -281,7 +282,7 @@ class MumbleProto(Proto):
 
         await self.send_queue.put(MumbleMsg(MumbleType.TextMessage, text_msg))
 
-    async def handle_service_message(
+    async def _handle_service_message(
         self, to_channel: Channel, message: ServiceMessage, meta: Metadata
     ) -> None:
         if isinstance(message, UserRequest):

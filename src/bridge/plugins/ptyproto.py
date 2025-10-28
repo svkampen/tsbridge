@@ -58,6 +58,8 @@ class PtyProto(Proto):
         self.out_port = out_port
         self._buffer = ""
 
+        await self.message_loop()
+
     def handle_recv(self) -> None:
         # mypy will complain, but read should never return None here
         # as we've just been informed data /is/ available.
