@@ -10,6 +10,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.types import Message as TGMessage
+import pathlib
 import html
 import functools
 
@@ -108,16 +109,20 @@ class TelegramProto(Proto):
         tasks = asyncio.all_tasks()
         output = ""
         for n, task in enumerate(tasks):
-            buf = StringIO()
-            output += f"<b>Task {n}</b> (name: {_esc(task.get_name())}), stack:\n"
-            task.print_stack(file=buf)
-            buf.seek(0)
-            output += "<code>"
-            val = buf.getvalue()
-            val = val.split("\n", 1)[1]
-            output += _esc(val)
-            output += "</code>\n"
-        await self.bot.send_message(chat_id=to_chat, text=output[:4000])
+            (stack_frame, *rest) = task.get_stack(limit=1)
+            function_name = stack_frame.f_code.co_name
+            function_lineno = stack_frame.f_lineno
+            function_filename = stack_frame.f_code.co_filename
+            filename = pathlib.Path(function_filename).parts[-1]
+
+            val = f"<b>Task {n}</b> (name: {_esc(task.get_name())})\n"
+            val += f"In {function_name}, {filename}:{function_lineno}.\n\n"
+
+            if (len(output) + len(val)) < 4000:
+                output += val
+            else:
+                break
+        await self.bot.send_message(chat_id=to_chat, text=output)
 
     async def _handle_service_message(
         self, to_channel: Channel, message: ServiceMessage, meta: Metadata
