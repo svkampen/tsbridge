@@ -1,13 +1,15 @@
-from telethon import TelegramClient, events
 from pprint import pprint
 from ..core.types import *
 from ..core.bridge import Bridge
 from ..core.utils import load_cfg_value
-from typing import Mapping, Any, Optional, Dict, Tuple
+from typing import Optional, Dict, Tuple
 import asyncio
-from io import BytesIO, StringIO
+from io import StringIO
 import logging
-import telethon
+from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.types import Message as TGMessage
 
 logger = logging.getLogger("telegram")
 
@@ -16,13 +18,12 @@ class TelegramProto(Proto):
     async def start(
         self, bridge: Bridge, out_port: OutPort, instance_cfg: Config
     ) -> None:
-        api_id = load_cfg_value(instance_cfg["api_id"])
-        api_hash = load_cfg_value(instance_cfg["api_hash"])
         bot_token = load_cfg_value(instance_cfg["bot_token"])
 
-        self.client = TelegramClient("bot", api_id, api_hash)
-
-        await self.client.start(bot_token=bot_token)
+        self.dispatcher = Dispatcher()
+        self.bot = Bot(
+            bot_token, default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN_V2)
+        )
 
         self.bot_id = instance_cfg["bot_id"]
         self.cfg = instance_cfg
@@ -30,7 +31,7 @@ class TelegramProto(Proto):
 
         logger.info("Started TG client.")
 
-        self.client.add_event_handler(self.message_handler)
+        self.dispatcher.message()(self.message_handler)
         self.out_port = out_port
 
         self.message_cache: Dict[int, Tuple[AnyMessage, Metadata]] = {}
@@ -40,40 +41,18 @@ class TelegramProto(Proto):
     async def send_user_request(self, from_channel: Channel) -> None:
         await self.out_port.put_message(UserRequest(from_channel))
 
-    async def get_reply_message(
-        self, event: events.NewMessage
-    ) -> Optional[Tuple[AnyMessage, str]]:
-        reply = await event.get_reply_message()
-        if not reply:
-            return None
+    async def message_handler(self, msg: TGMessage) -> None:
+        sender = msg.from_user
 
-        reply_sender = await reply.get_sender()
+        if not sender:
+            return
 
-        (orig_message, orig_meta) = self.message_cache.get(reply.id, (None, None))
-
-        if orig_message and orig_meta:
-            return (orig_message, orig_meta.from_instance)
-
-        message = Message(
-            user=reply_sender.first_name,
-            text=reply.message,
-            channel=reply.chat_id,
-            attachments=[],
-        )
-
-        return (message, self.cfg["name"])
-
-    @events.register(events.MessageEdited)
-    @events.register(events.NewMessage)
-    async def message_handler(self, event: events.NewMessage) -> None:
-        sender: telethon.types.User = await event.get_sender()
-
-        reply = await self.get_reply_message(event)
-        (reply_message, reply_message_origin) = reply if reply else (None, None)
+        # todo handle reply somehow
+        reply = msg.reply_to_message
 
         attachments = []
 
-        text = event.raw_text
+        text = msg.text or ""
         if text == ".unpause":
             self.paused = False
 
@@ -83,36 +62,30 @@ class TelegramProto(Proto):
         if self.paused:
             return
 
-        if event.sticker is not None:
-            for attr in event.sticker.attributes:
-                if isinstance(attr, telethon.types.DocumentAttributeSticker):
-                    text = (
-                        f"[ Sticker with emoji: {attr.alt} ]"
-                        if attr.alt
-                        else "[ Sticker without emoji >:( ]"
-                    )
-        elif event.photo is not None:
+        if msg.sticker is not None:
+            if msg.sticker.emoji:
+                text = f"[ Sticker with emoji: {msg.sticker.emoji} ]"
+            else:
+                text = f"[ Sticker without emoji >:( ]"
+        elif msg.photo is not None:
             logger.info("Getting photo from TG message...")
-            data = BytesIO()
-            res = await event.download_media(file=data)
+            data = await self.bot.download(msg.photo[0].file_id)
             logger.info("Photo downloaded.")
-            if res:
+            if data:
                 data.seek(0)
                 attachments.append(Photo(data))
-        elif event.raw_text == "":
+        elif msg.text == "":
             return
 
-        if event.text == ".online":
-            return await self.send_user_request(event.chat_id)
-        if event.text == ".tasks":
-            return await self.send_debug_info(event.chat_id)
+        if msg.text == ".online":
+            return await self.send_user_request(msg.chat.id)
+        if msg.text == ".tasks":
+            return await self.send_debug_info(msg.chat.id)
 
         message = Message(
             user=sender.first_name,
             text=text,
-            channel=event.chat_id,
-            reply_to=reply_message,
-            reply_to_origin=reply_message_origin,
+            channel=msg.chat.id,
             attachments=attachments,
         )
 
@@ -133,23 +106,23 @@ class TelegramProto(Proto):
             val = val.split("\n", 1)[1]
             output += val
             output += "```\n"
-        await self.client.send_message(to_chat, message=output[:4000])
+        await self.bot.send_message(chat_id=to_chat, text=output[:4000])
 
     async def _handle_service_message(
         self, to_channel: Channel, message: ServiceMessage, meta: Metadata
     ) -> None:
         to_channel = int(to_channel)
-        msg: Optional[telethon.types.Message] = None
+        msg: Optional[TGMessage] = None
         if isinstance(message, JoinMessage):
-            msg = await self.client.send_message(
-                to_channel,
-                message=f"[{meta.from_instance.upper()}] {message.user} joined.",
+            msg = await self.bot.send_message(
+                chat_id=to_channel,
+                text=f"[{meta.from_instance.upper()}] {message.user} joined.",
             )
         elif isinstance(message, PartMessage):
-            msg = await self.client.send_message(
-                to_channel,
-                message=f"[{meta.from_instance.upper()}] {message.user} left.",
-                silent=True,
+            msg = await self.bot.send_message(
+                chat_id=to_channel,
+                text=f"[{meta.from_instance.upper()}] {message.user} left.",
+                disable_notification=True,
             )
         elif isinstance(message, UserList):
             ulist = (
@@ -157,14 +130,14 @@ class TelegramProto(Proto):
                 if not message.users
                 else "Users:\n%s" % ("\n".join(message.users))
             )
-            msg = await self.client.send_message(
-                to_channel, message=f"[{meta.from_instance.upper()}] {ulist}."
+            msg = await self.bot.send_message(
+                to_channel, text=f"[{meta.from_instance.upper()}] {ulist}."
             )
         elif isinstance(message, MiscServiceMessage):
-            msg = await self.client.send_message(to_channel, message=message.text)
+            msg = await self.bot.send_message(to_channel, text=message.text)
 
         if msg:
-            self.message_cache[msg.id] = (message, meta)
+            self.message_cache[msg.message_id] = (message, meta)
 
     async def _handle_message(
         self, to_channel: Channel, message: Message, meta: Metadata
@@ -175,12 +148,12 @@ class TelegramProto(Proto):
         )
         to_channel = int(to_channel)
         if "DJ Smerlemex" in formatted:
-            msg = await self.client.send_message(
-                to_channel, message=formatted, silent=True
+            msg = await self.bot.send_message(
+                to_channel, text=formatted, disable_notification=True
             )
         else:
-            msg = await self.client.send_message(to_channel, message=formatted)
-        self.message_cache[msg.id] = (message, meta)
+            msg = await self.bot.send_message(to_channel, text=formatted)
+        self.message_cache[msg.message_id] = (message, meta)
 
 
 def init(bridge: Bridge) -> None:
