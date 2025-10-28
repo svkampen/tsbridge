@@ -42,7 +42,12 @@ class TelegramProto(Proto):
 
         message_loop_task = asyncio.create_task(self.message_loop())
         bot_poll_task = asyncio.create_task(self.dispatcher.start_polling(self.bot))
-        await wait_reraise({message_loop_task, bot_poll_task})
+
+        try:
+            await wait_reraise({message_loop_task, bot_poll_task})
+        except BaseException as e:
+            await self.dispatcher.stop_polling()
+            raise e
 
     async def send_user_request(self, from_channel: Channel) -> None:
         await self.out_port.put_message(UserRequest(from_channel))
