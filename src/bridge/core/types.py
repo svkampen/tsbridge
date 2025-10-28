@@ -116,6 +116,9 @@ class Bus:
 class Proto(abc.ABC):
     in_queue: asyncio.Queue[tuple[Channel, AnyMessage, Metadata]]
 
+    def __init__(self) -> None:
+        self.in_queue = asyncio.Queue()
+
     @abc.abstractmethod
     async def start(
         self, bridge: "Bridge", out_port: OutPort, instance_cfg: Config
