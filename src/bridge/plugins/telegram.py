@@ -1,7 +1,7 @@
 from pprint import pprint
 from ..core.types import *
 from ..core.bridge import Bridge
-from ..core.utils import load_cfg_value
+from ..core.utils import load_cfg_value, wait_reraise
 from typing import Optional, Dict, Tuple
 import asyncio
 from io import StringIO
@@ -36,7 +36,9 @@ class TelegramProto(Proto):
 
         self.message_cache: Dict[int, Tuple[AnyMessage, Metadata]] = {}
 
-        await self.message_loop()
+        message_loop_task = asyncio.create_task(self.message_loop())
+        bot_poll_task = asyncio.create_task(self.dispatcher.start_polling(self.bot))
+        await wait_reraise({message_loop_task, bot_poll_task})
 
     async def send_user_request(self, from_channel: Channel) -> None:
         await self.out_port.put_message(UserRequest(from_channel))
