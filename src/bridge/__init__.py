@@ -39,6 +39,7 @@ def _main(args: Dict) -> None:
 
 
 def main() -> None:
+    assert __doc__ is not None
     _main(docopt(__doc__, help=True))
 
 
