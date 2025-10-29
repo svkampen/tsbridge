@@ -4,9 +4,8 @@
 
 import asyncio
 import logging
-from typing import Dict, List, NoReturn, Awaitable, Iterator, Tuple, Any, Optional
+from typing import Dict, List, Iterator, Tuple, Any, Optional
 from asyncio import Future, Task, FIRST_COMPLETED
-from datetime import timedelta
 
 logger = logging.getLogger("server-query")
 
@@ -14,11 +13,9 @@ logger = logging.getLogger("server-query")
 def kv_parse(string: str) -> Dict[str, str]:
     data = {}
     for kv in string.split(" "):
-        try:
-            val = kv.split("=", 1)[1]
-        except IndexError:
-            val = ""
-        data[kv.split("=")[0]] = ServerQueryClient.unescape(val)
+        key, *vals = kv.split("=", 1)
+        val = "".join(vals)
+        data[key] = ServerQueryClient.unescape(val)
     return data
 
 
@@ -49,8 +46,8 @@ class ServerQueryClient:
         self.username = username
         self.password = password
 
-        self.request_queue: asyncio.Queue = asyncio.Queue()
-        self.notify_queue: asyncio.Queue = asyncio.Queue()
+        self.request_queue: asyncio.Queue[tuple[str, Future[str]]] = asyncio.Queue()
+        self.notify_queue: asyncio.Queue[SQResult] = asyncio.Queue()
 
         self.task = asyncio.create_task(self.async_client(), name="sq: client")
         self.ping_task = asyncio.create_task(self.ping(), name="sq: ping")
@@ -69,30 +66,20 @@ class ServerQueryClient:
             await asyncio.sleep(60)
             response = await self.raw_request("version")
 
-    def raw_request(self, req: str) -> asyncio.Future:
+    async def raw_request(self, req: str) -> str:
         fut = self.loop.create_future()
-        # The queue has no limit, so put_nowait works.
-        # This allows us to just return the future, which means we won't
-        # get odd syntax like await await self.raw_request(...)
-        self.request_queue.put_nowait((req, fut))
-        return fut
+        await self.request_queue.put((req, fut))
+        return await fut
 
-    def request(self, req: str) -> asyncio.Future:
-        fut = self.raw_request(req)
-        new_fut = self.loop.create_future()
-
-        def _callback(fut: asyncio.Future) -> None:
-            try:
-                result = fut.result()
-                new_fut.set_result(SQResult(result))
-            except SQError as e:
-                if e.errno == 1541:
-                    new_fut.set_result(SQResult(""))
-                else:
-                    new_fut.set_exception(e)
-
-        fut.add_done_callback(_callback)
-        return new_fut
+    async def request(self, req: str) -> SQResult:
+        try:
+            res = await self.raw_request(req)
+        except SQError as e:
+            if e.errno == 1541:  # invalid parameter size
+                return SQResult("")
+            else:
+                raise e
+        return SQResult(res)
 
     async def stop(self) -> None:
         self.running = False
@@ -122,7 +109,9 @@ class ServerQueryClient:
         return (await self.reader.readline()).strip().decode("utf-8")
 
     async def handle_req_or_notify(
-        self, req_aw: Optional[Task] = None, notify_aw: Optional[Task] = None
+        self,
+        req_aw: Optional[Task[tuple[str, Future[str]]]] = None,
+        notify_aw: Optional[Task[str]] = None,
     ) -> Tuple[Optional[Task], Optional[Task]]:
         if req_aw is None:
             req_aw = asyncio.create_task(
