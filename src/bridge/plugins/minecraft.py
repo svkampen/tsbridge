@@ -197,14 +197,15 @@ class MinecraftProto(Proto):
     ) -> None:
         from_name = meta.from_instance.upper()
         fmt: List[Dict[str, Any]] = [{"text": f"[{from_name}] ", "color": "blue"}]
-        if isinstance(message, UserRequest):
-            self.pty.write(b"list\n")
-        if isinstance(message, JoinMessage):
-            fmt.append({"text": f"{message.user} joined.", "color": "green"})
-            self.pty.write(("tellraw @a " + json.dumps(fmt) + "\n").encode("utf-8"))
-        if isinstance(message, PartMessage):
-            fmt.append({"text": f"{message.user} left.", "color": "red"})
-            self.pty.write(("tellraw @a " + json.dumps(fmt) + "\n").encode("utf-8"))
+        match message:
+            case UserRequest():
+                self.pty.write(b"list\n")
+            case JoinMessage():
+                fmt.append({"text": f"{message.user} joined.", "color": "green"})
+                self.pty.write(("tellraw @a " + json.dumps(fmt) + "\n").encode("utf-8"))
+            case PartMessage():
+                fmt.append({"text": f"{message.user} left.", "color": "red"})
+                self.pty.write(("tellraw @a " + json.dumps(fmt) + "\n").encode("utf-8"))
 
 
 def init(bridge: Bridge) -> None:

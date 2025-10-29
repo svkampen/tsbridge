@@ -85,14 +85,15 @@ class FactorioProto(PtyProto):
         self, to_channel: Channel, message: ServiceMessage, meta: Metadata
     ) -> None:
         from_name = meta.from_instance.upper()
-        if isinstance(message, UserRequest):
-            await self.determine_users()
-        if isinstance(message, JoinMessage):
-            output = f"[{meta.from_instance.upper()}] {message.user} joined."
-            self.pty.write((f"{output}\n").encode("utf-8"))
-        if isinstance(message, PartMessage):
-            output = f"[{meta.from_instance.upper()}] {message.user} left."
-            self.pty.write((f"{output}\n").encode("utf-8"))
+        match message:
+            case UserRequest():
+                await self.determine_users()
+            case JoinMessage():
+                output = f"[{meta.from_instance.upper()}] {message.user} joined."
+                self.pty.write((f"{output}\n").encode("utf-8"))
+            case PartMessage():
+                output = f"[{meta.from_instance.upper()}] {message.user} left."
+                self.pty.write((f"{output}\n").encode("utf-8"))
         self.pty.flush()
 
 

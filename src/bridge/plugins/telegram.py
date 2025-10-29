@@ -129,29 +129,30 @@ class TelegramProto(Proto):
     ) -> None:
         to_channel = int(to_channel)
         msg: Optional[TGMessage] = None
-        if isinstance(message, JoinMessage):
-            msg = await self.bot.send_message(
-                chat_id=to_channel,
-                text=_esc(f"[{meta.from_instance.upper()}] {message.user} joined."),
-            )
-        elif isinstance(message, PartMessage):
-            msg = await self.bot.send_message(
-                chat_id=to_channel,
-                text=_esc(f"[{meta.from_instance.upper()}] {message.user} left."),
-                disable_notification=True,
-            )
-        elif isinstance(message, UserList):
-            ulist = (
-                "Nobody is online"
-                if not message.users
-                else "Users:\n%s" % ("\n".join(message.users))
-            )
-            msg = await self.bot.send_message(
-                to_channel,
-                text=_esc(f"[{meta.from_instance.upper()}] {ulist}."),
-            )
-        elif isinstance(message, MiscServiceMessage):
-            msg = await self.bot.send_message(to_channel, text=_esc(message.text))
+        match message:
+            case JoinMessage():
+                msg = await self.bot.send_message(
+                    chat_id=to_channel,
+                    text=_esc(f"[{meta.from_instance.upper()}] {message.user} joined."),
+                )
+            case PartMessage():
+                msg = await self.bot.send_message(
+                    chat_id=to_channel,
+                    text=_esc(f"[{meta.from_instance.upper()}] {message.user} left."),
+                    disable_notification=True,
+                )
+            case UserList():
+                ulist = (
+                    "Nobody is online"
+                    if not message.users
+                    else "Users:\n%s" % ("\n".join(message.users))
+                )
+                msg = await self.bot.send_message(
+                    to_channel,
+                    text=_esc(f"[{meta.from_instance.upper()}] {ulist}."),
+                )
+            case MiscServiceMessage():
+                msg = await self.bot.send_message(to_channel, text=_esc(message.text))
 
         if msg:
             self.message_cache[msg.message_id] = (message, meta)
