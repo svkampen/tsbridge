@@ -138,7 +138,10 @@ class MumbleProto(Proto):
         self.ssl_ctx.load_cert_chain(self.ssl_cert, self.ssl_key)
 
         await self.connect()
-        await self.message_loop()
+
+        msg_handle = self.message_loop()
+
+        await asyncio.gather(msg_handle, self.read_handle, self.send_handle)
 
     async def connect(self) -> None:
         self.reader, self.writer = await asyncio.open_connection(
@@ -153,9 +156,6 @@ class MumbleProto(Proto):
 
         self.read_handle = asyncio.create_task(self.read_task(), name="mumble: read")
         self.send_handle = asyncio.create_task(self.send_task(), name="mumble: send")
-        self.restart_handle = asyncio.create_task(
-            self.restart_task(), name="mumble: restart"
-        )
 
         self.user_map: Dict[int, MumbleUser] = {}
         self.session_id = 0
@@ -202,7 +202,7 @@ class MumbleProto(Proto):
                 self.writer.write(data)
                 await self.writer.drain()
             except:
-                self.restarting.set()
+                self.running = False
                 return
 
     async def read_task(self) -> None:
@@ -214,7 +214,7 @@ class MumbleProto(Proto):
                 buf = await self.reader.readexactly(length)
                 msg = MumbleMsg.from_typed_buf(mumble_type, buf)
             except:
-                self.restarting.set()
+                self.running = False
                 return
 
             if mumble_type not in (MumbleType.UDPTunnel, MumbleType.Ping):
@@ -260,14 +260,6 @@ class MumbleProto(Proto):
                     await self.out_port.put_message(message)
                 case _:
                     pass
-
-    async def restart_task(self) -> None:
-        await self.restarting.wait()
-        logger.warning("Restart event tripped!")
-        self.running = False
-        await self.send_handle
-        await self.read_handle
-        asyncio.create_task(self.connect())
 
     async def _handle_message(
         self, to_channel: Channel, message: Message, meta: Metadata
