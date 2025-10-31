@@ -42,7 +42,9 @@ class TelegramProto(Proto):
         self.message_cache: Dict[int, Tuple[AnyMessage, Metadata]] = {}
 
         message_loop_task = asyncio.create_task(self.message_loop())
-        bot_poll_task = asyncio.create_task(self.dispatcher.start_polling(self.bot))
+        bot_poll_task = asyncio.create_task(
+            self.dispatcher.start_polling(self.bot, handle_signals=False)
+        )
 
         try:
             await wait_reraise({message_loop_task, bot_poll_task})
