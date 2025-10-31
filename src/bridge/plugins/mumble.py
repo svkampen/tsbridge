@@ -203,7 +203,7 @@ class MumbleProto(Proto):
                 await self.writer.drain()
             except:
                 self.running = False
-                return
+                raise
 
     async def read_task(self) -> None:
         while self.running:
@@ -215,7 +215,7 @@ class MumbleProto(Proto):
                 msg = MumbleMsg.from_typed_buf(mumble_type, buf)
             except:
                 self.running = False
-                return
+                raise
 
             if mumble_type not in (MumbleType.UDPTunnel, MumbleType.Ping):
                 logger.info(f"Received message: {msg!r}")
