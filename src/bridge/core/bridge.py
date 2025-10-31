@@ -69,14 +69,17 @@ class Bridge:
         for destructor in self.destructors:
             await destructor()
 
-    def _construct_instance(self, name: str, cfg: Config, proto: type[Proto]) -> Proto:
+    def _construct_instance(
+        self, name: str, cfg: Config, proto: type[Proto], delay_secs: int = 0
+    ) -> Proto:
         logger.info(f"Constructing instance: {name}")
         proto_inst = proto()
-        self.run_handles.add(
-            self.loop.create_task(
-                name=name, coro=proto_inst.start(self, self.bus.port_for(name), cfg)
-            )
-        )
+
+        async def _wrapper() -> None:
+            await asyncio.sleep(delay_secs)
+            await proto_inst.start(self, self.bus.port_for(name), cfg)
+
+        self.run_handles.add(self.loop.create_task(name=name, coro=_wrapper()))
         self.instances[name] = proto_inst
         return proto_inst
 
@@ -119,7 +122,9 @@ class Bridge:
                             continue
 
                         proto = self.protocols[cfg["proto"]]
-                        new_inst = self._construct_instance(name, cfg, proto)
+                        new_inst = self._construct_instance(
+                            name, cfg, proto, delay_secs=10
+                        )
 
                         # preserve any messages waiting in the in_queue
                         new_inst.in_queue = old_inst.in_queue
