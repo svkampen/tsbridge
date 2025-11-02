@@ -1,13 +1,15 @@
+import traceback
 from . import plugins
 import asyncio
 import logging
 import sys
 import itertools
-from typing import Dict, Type, Set, Callable, List, Awaitable, Optional
+from typing import Dict, Type, Set, Callable, List, Awaitable, Optional, Any, Coroutine
 from asyncio import CancelledError
 from .types import Proto, Bus, AttachmentHost, ServiceMessage, Metadata, Config
 from .link import Link
 from collections import defaultdict
+from .logging import FutureHandler, FORMAT as LOG_FORMAT
 
 
 logger = logging.getLogger("bridge")
@@ -31,6 +33,8 @@ class Bridge:
         self.bus = Bus()
         self.config = config
         self.attachment_host = None
+
+        self.log_handler: Optional[Callable[[str], Coroutine[Any, Any, None]]] = None
 
         plugin_loader = plugins.PluginLoader()
         self.plugins = plugin_loader.load_all()
@@ -56,8 +60,29 @@ class Bridge:
     def get_attachment_host(self) -> Optional[AttachmentHost]:
         return self.attachment_host
 
+    def set_log_handler(self, fn: Callable[[str], Coroutine[Any, Any, None]]) -> None:
+        self.log_handler = fn
+
+    async def _install_log_handler(self) -> None:
+        async def _factory(s: str) -> None:
+            if self.log_handler:
+                try:
+                    await self.log_handler(s)
+                except Exception:
+                    traceback.print_exc()
+
+        lh = FutureHandler(
+            loop=asyncio.get_event_loop(), coro_factory=_factory, level=logging.INFO
+        )
+
+        fmt = logging.Formatter(LOG_FORMAT)
+        lh.setFormatter(fmt)
+
+        logging.getLogger().addHandler(lh)
+
     async def start(self) -> None:
         try:
+            await self._install_log_handler()
             await self.construct()
             mb_task = asyncio.create_task(self.message_broker())
             wd_task = asyncio.create_task(self.instance_watchdog())

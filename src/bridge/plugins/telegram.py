@@ -34,7 +34,9 @@ class TelegramProto(Proto):
         self.cfg = instance_cfg
         self.paused = False
 
-        logger.info("Started TG client.")
+        if lc := instance_cfg.get("logging_channel"):
+            self.logging_channel = int(lc)
+            bridge.set_log_handler(self.log_handler)
 
         self.dispatcher.message()(self.message_handler)
         self.out_port = out_port
@@ -46,11 +48,16 @@ class TelegramProto(Proto):
             self.dispatcher.start_polling(self.bot, handle_signals=False)
         )
 
+        logger.info("Started TG client.")
+
         try:
             await wait_reraise({message_loop_task, bot_poll_task})
         except BaseException as e:
             await self.dispatcher.stop_polling()
             raise e
+
+    async def log_handler(self, s: str) -> None:
+        await self.bot.send_message(chat_id=self.logging_channel, text=_esc(s))
 
     async def send_user_request(self, from_channel: Channel) -> None:
         await self.out_port.put_message(UserRequest(from_channel))
