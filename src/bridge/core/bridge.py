@@ -27,6 +27,7 @@ class Bridge:
         self.run_handles: set[asyncio.Task] = set()
         self.links: List[Link] = []
         self.routes = defaultdict(set)
+        self.instance_restart_delay: dict[str, int] = defaultdict(lambda: 5)
         self.bus = Bus()
         self.config = config
         self.attachment_host = None
@@ -123,8 +124,16 @@ class Bridge:
 
                         proto = self.protocols[cfg["proto"]]
                         new_inst = self._construct_instance(
-                            name, cfg, proto, delay_secs=10
+                            name,
+                            cfg,
+                            proto,
+                            delay_secs=self.instance_restart_delay[name],
                         )
+
+                        new_delay = self.instance_restart_delay[name] ** 1.15
+                        if new_delay >= 300:
+                            new_delay = 300
+                        self.instance_restart_delay[name] = new_delay
 
                         # preserve any messages waiting in the in_queue
                         new_inst.in_queue = old_inst.in_queue
