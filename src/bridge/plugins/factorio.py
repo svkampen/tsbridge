@@ -51,7 +51,7 @@ class FactorioProto(PtyProto):
     async def _handle_message(
         self, to_channel: Channel, message: Message, meta: Metadata
     ) -> None:
-        self.logger.info(f"Got message to send: {message}")
+        self.logger.debug(f"Got message to send: {message}")
         from_name = meta.from_instance.upper()
 
         escaped_text = (

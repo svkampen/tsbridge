@@ -101,7 +101,7 @@ class ServerQueryClient:
 
     async def process_notification(self, line: str) -> None:
         assert line.startswith("notify")
-        logger.info(f"Received notification: {line}")
+        logger.debug(f"Received notification: {line}")
         res = SQResult(line)
         await self.notify_queue.put(res)
 
@@ -196,7 +196,7 @@ class ServerQueryClient:
         self.reader, self.writer = await asyncio.open_connection(self.host, self.port)
         welcome_message = await self.reader.read(16384)
 
-        logger.info("[sq_client] Read welcome message.")
+        logger.debug("[sq_client] Read welcome message.")
         args: Tuple[Optional[Task], Optional[Task]] = (None, None)
 
         try:

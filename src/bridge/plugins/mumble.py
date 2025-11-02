@@ -193,7 +193,7 @@ class MumbleProto(Proto):
                 msg = MumbleMsg(MumbleType.Ping, mumble_proto.Ping())
 
             if msg.mumble_type != MumbleType.Ping:
-                logger.info(f"Sending message: {msg!r}")
+                logger.debug(f"Sending message: {msg!r}")
 
             tag = msg.mumble_type
             data = msg.value.SerializeToString()
@@ -218,7 +218,7 @@ class MumbleProto(Proto):
                 raise
 
             if mumble_type not in (MumbleType.UDPTunnel, MumbleType.Ping):
-                logger.info(f"Received message: {msg!r}")
+                logger.debug(f"Received message: {msg!r}")
 
             match msg.mumble_type:
                 case MumbleType.ServerSync:
@@ -256,7 +256,7 @@ class MumbleProto(Proto):
                         text=text_msg.message,
                         channel=0,
                     )
-                    logger.info(f"Received message: {message}")
+                    logger.debug(f"Received message: {message}")
                     await self.out_port.put_message(message)
                 case _:
                     pass

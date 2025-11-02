@@ -50,7 +50,7 @@ class TS3Proto(Proto):
             if client["client_type"] != "0":
                 continue
             self.clid_users[int(client["clid"])] = client["client_nickname"]
-        logger.info(f"Current client list: {self.clid_users}")
+        logger.debug(f"Current client list: {self.clid_users}")
         await self.client.request("servernotifyregister event=textchannel")
         await self.client.request(
             f"servernotifyregister event=channel id={self.channel}"
@@ -103,7 +103,7 @@ class TS3Proto(Proto):
         if message.text.startswith("."):
             return
 
-        logger.info(f"Received message: {message}")
+        logger.debug(f"Received message: {message}")
         if "URL" in message.text:
             message.text = self.url_strip(message.text)
         await self.out_port.put_message(message)
@@ -116,7 +116,9 @@ class TS3Proto(Proto):
     async def _handle_message(
         self, to_channel: Channel, message: Message, meta: Metadata
     ) -> None:
-        logger.info(f"Got message to send to TS3: {message} (to channel: {to_channel})")
+        logger.debug(
+            f"Got message to send to TS3: {message} (to channel: {to_channel})"
+        )
 
         txt = message.text
         for attachment in message.attachments:

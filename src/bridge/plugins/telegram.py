@@ -89,9 +89,9 @@ class TelegramProto(Proto):
             else:
                 text = f"[ Sticker without emoji >:( ]"
         elif msg.photo is not None:
-            logger.info("Getting photo from TG message...")
+            logger.debug("Getting photo from TG message...")
             data = await self.bot.download(msg.photo[0].file_id)
-            logger.info("Photo downloaded.")
+            logger.debug("Photo downloaded.")
             if data:
                 data.seek(0)
                 attachments.append(Photo(data))
@@ -110,7 +110,7 @@ class TelegramProto(Proto):
             attachments=attachments,
         )
 
-        logger.info(f"Received message from Telegram: {message}")
+        logger.debug(f"Received message from Telegram: {message}")
 
         await self.out_port.put_message(message)
 
@@ -169,7 +169,7 @@ class TelegramProto(Proto):
     async def _handle_message(
         self, to_channel: Channel, message: Message, meta: Metadata
     ) -> None:
-        logger.info(f"Sending message to channel {to_channel}: {message}")
+        logger.debug(f"Sending message to channel {to_channel}: {message}")
         formatted = _esc(
             f"[{meta.from_instance.upper()}] {message.user}: {message.text}".strip()
         )

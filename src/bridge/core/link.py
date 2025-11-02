@@ -199,7 +199,7 @@ class Link:
             return
 
         try:
-            logger.info(f"Sending message {message}")
+            logger.debug(f"Sending message {message}")
             data = pickle.dumps((meta, message))
             size = len(data)
             size_encoded = struct.pack("!I", size)

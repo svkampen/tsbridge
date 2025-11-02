@@ -16,11 +16,11 @@ class ImagefaultAttachmentHost(AttachmentHost):
         await self.session.close()
 
     async def put(self, data: IO) -> str:
-        logger.info("starting data upload.")
+        logger.debug("starting data upload.")
         fd = aiohttp.FormData({"upload": data})
         async with self.session.post("https://imgf.lt/app_upload", data=fd) as resp:
             url = (await resp.content.readline()).decode("utf-8")
-        logger.info(f"Got url back: {url}")
+        logger.debug(f"Got url back: {url}")
         return url
 
 

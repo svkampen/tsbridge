@@ -26,10 +26,7 @@ class FutureHandler(logging.Handler):
 
 def init(name: str = "bridge", level: int = logging.INFO) -> None:
     fh = logging.FileHandler(f"{name}.log")
-    fh.setLevel(level)
-
     sh = logging.StreamHandler()
-    sh.setLevel(level)
 
     formatter = coloredlogs.ColoredFormatter(
         fmt=FORMAT,

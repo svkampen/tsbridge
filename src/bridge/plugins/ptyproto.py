@@ -72,7 +72,7 @@ class PtyProto(Proto):
             for line in lines:
                 # we don't do RTL/LTR marks in text
                 line = line.replace("\u200e", "")
-                self.logger.info(f"Read line from PTY: {line!r}")
+                self.logger.debug(f"Read line from PTY: {line!r}")
                 match = re.match(self.SERVER_MESSAGE_RE, line)
                 if not match:
                     continue

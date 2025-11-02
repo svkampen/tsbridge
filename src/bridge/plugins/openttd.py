@@ -43,7 +43,7 @@ class OpenTTDProto(PtyProto):
     async def message(self, line: str, groups: Groups) -> None:
         user, message = groups
 
-        self.logger.info(f"Message from {user}: {message}")
+        self.logger.debug(f"Message from {user}: {message}")
         msg = Message(user, message, CHANNEL_NAME)
         await self.out_port.put_message(msg)
 
@@ -71,7 +71,7 @@ class OpenTTDProto(PtyProto):
     )
     async def join_part(self, line: str, groups: Groups) -> None:
         name, type = groups
-        self.logger.info(f"{groups[1].title()}: {groups[0]}")
+        self.logger.debug(f"{groups[1].title()}: {groups[0]}")
         msg: ServiceMessage
         if type == "joined":
             msg = JoinMessage(name, CHANNEL_NAME)
@@ -82,7 +82,7 @@ class OpenTTDProto(PtyProto):
     async def _handle_message(
         self, to_channel: Channel, message: Message, meta: Metadata
     ) -> None:
-        self.logger.info(f"Got message to send: {message}")
+        self.logger.debug(f"Got message to send: {message}")
         from_name = meta.from_instance.upper()
 
         escaped_text = (
