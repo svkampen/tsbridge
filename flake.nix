@@ -91,6 +91,7 @@
       {
         options.svkmpn.services.bridge = {
           enable = mkEnableOption "Enable the bridge";
+          debug = mkEnableOption "Enable debug logging";
           conf = mkOption {
             type = types.lines;
             description = "Bot configuration.";
@@ -122,7 +123,7 @@
             after = [ "network.target" ];
             serviceConfig = let pkg = self.packages."x86_64-linux".default; in
             {
-              ExecStart = "${pkg}/bin/bridge -c ${confFile}";
+              ExecStart = if cfg.debug then "${pkg}/bin/bridge -c ${confFile} --debug" else "${pkg}/bin/bridge -c ${confFile}";
               User = "${cfg.user}";
               Group = "${cfg.user}";
               WorkingDirectory = "${cfg.dataDir}";
